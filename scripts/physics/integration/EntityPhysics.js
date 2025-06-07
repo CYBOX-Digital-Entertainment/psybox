@@ -3,7 +3,7 @@ import { PhysicsComponent } from "../../components/PhysicsComponent";
 import { RigidBody } from "../core/RigidBody";
 import { ForceManager } from "../core/ForceManager";
 import { BlockCollision } from "./BlockCollision";
-// 1틱(0.05초)마다 실행
+// 1틱(0.05초) 주기 실행
 system.runInterval(() => {
     const overworld = world.getDimension("overworld");
     for (const entity of overworld.getEntities()) {
