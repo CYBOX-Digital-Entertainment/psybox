@@ -1,57 +1,86 @@
 import { world, Entity, Vector3 } from "@minecraft/server";
 
 /**
- * 3D 공간에서 경사면 각도와 방향을 계산하는 유틸리티 클래스
- * - Minecraft Bedrock 1.21.82 안정화 API 전용
+ * MACHINE_BUILDER 방식의 레이캐스트 기반 경사면 검출
+ * 계단/반블록의 정확한 높이 계산 지원
  */
 export class SlopeDetector {
-    static getSlopeInfo(entity: Entity): { angle: number, direction: Vector3 } {
-        const pos = entity.location;
-        const overworld = world.getDimension("overworld");
+  private static readonly STEP_BLOCKS = new Set([
+    'minecraft:oak_stairs', 'minecraft:stone_stairs', 'minecraft:brick_stairs',
+    'minecraft:quartz_stairs', 'minecraft:cobblestone_stairs'
+  ]);
+  
+  private static readonly SLAB_BLOCKS = new Set([
+    'minecraft:oak_slab', 'minecraft:stone_slab', 'minecraft:brick_slab',
+    'minecraft:quartz_slab', 'minecraft:cobblestone_slab'
+  ]);
+
+  static getSlopeInfo(entity: Entity): { angle: number, direction: Vector3, strength: number } {
+    const pos = entity.location;
+    const overworld = world.getDimension("overworld");
+    
+    // 4방향 검출 (MACHINE_BUILDER 방식)
+    const directions = [
+      { vec: { x: 0.6, y: 0, z: 0 }, name: 'x+' },
+      { vec: { x: -0.6, y: 0, z: 0 }, name: 'x-' },
+      { vec: { x: 0, y: 0, z: 0.6 }, name: 'z+' },
+      { vec: { x: 0, y: 0, z: -0.6 }, name: 'z-' }
+    ];
+    
+    let maxSlope = { angle: 0, direction: { x: 0, y: 0, z: 0 }, strength: 0 };
+    
+    for (const dir of directions) {
+      const checkPos = {
+        x: pos.x + dir.vec.x,
+        y: Math.floor(pos.y),
+        z: pos.z + dir.vec.z
+      };
+      
+      try {
+        const block = overworld.getBlock(checkPos);
+        const heightDiff = this.calculateBlockHeight(block, pos.y) - pos.y;
         
-        // X축 방향 검출
-        const forwardX = { x: pos.x + 0.5, y: pos.y, z: pos.z };
-        const backwardX = { x: pos.x - 0.5, y: pos.y, z: pos.z };
-        
-        // Z축 방향 검출
-        const forwardZ = { x: pos.x, y: pos.y, z: pos.z + 0.5 };
-        const backwardZ = { x: pos.x, y: pos.y, z: pos.z - 0.5 };
-
-        try {
-            // 블록 높이 비교 (X축)
-            const blockX1 = overworld.getBlock(forwardX);
-            const blockX2 = overworld.getBlock(backwardX);
-            const slopeX = (blockX1?.y ?? pos.y) - (blockX2?.y ?? pos.y);
-
-            // 블록 높이 비교 (Z축)
-            const blockZ1 = overworld.getBlock(forwardZ);
-            const blockZ2 = overworld.getBlock(backwardZ);
-            const slopeZ = (blockZ1?.y ?? pos.y) - (blockZ2?.y ?? pos.y);
-
-            // 가장 가파른 경사 선택
-            if (Math.abs(slopeX) > Math.abs(slopeZ)) {
-                return {
-                    angle: Math.atan(slopeX / 1.0), // 1m 거리 차이
-                    direction: this.normalizeVector({ x: slopeX, y: 0, z: 0 })
-                };
-            } else {
-                return {
-                    angle: Math.atan(slopeZ / 1.0),
-                    direction: this.normalizeVector({ x: 0, y: 0, z: slopeZ })
-                };
-            }
-        } catch (e) {
-            console.error("SlopeDetector Error:", e);
-            return { angle: 0, direction: { x: 0, y: 0, z: 0 } };
+        if (Math.abs(heightDiff) > 0.05) {
+          const angle = Math.atan(heightDiff / 0.6);
+          const strength = Math.abs(Math.sin(angle));
+          
+          if (strength > maxSlope.strength) {
+            maxSlope = {
+              angle: angle,
+              direction: this.normalizeVector(dir.vec),
+              strength: strength
+            };
+          }
         }
+      } catch (e) {
+        console.warn("SlopeDetector: Block access failed", e);
+      }
     }
-
-    private static normalizeVector(v: Vector3): Vector3 {
-        const length = Math.sqrt(v.x**2 + v.y**2 + v.z**2);
-        return { 
-            x: v.x / length || 0, 
-            y: v.y / length || 0, 
-            z: v.z / length || 0 
-        };
+    
+    return maxSlope;
+  }
+  
+  private static calculateBlockHeight(block: any, entityY: number): number {
+    if (!block?.typeId) return entityY;
+    
+    const baseY = block.y;
+    
+    // 계단 블록 처리
+    if (this.STEP_BLOCKS.has(block.typeId)) {
+      return baseY + 0.5; // 계단 높이
     }
+    
+    // 반블록 처리  
+    if (this.SLAB_BLOCKS.has(block.typeId)) {
+      return baseY + 0.5; // 반블록 높이
+    }
+    
+    // 일반 블록
+    return baseY + 1.0;
+  }
+  
+  private static normalizeVector(v: Vector3): Vector3 {
+    const length = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+    return length > 0 ? { x: v.x/length, y: v.y/length, z: v.z/length } : { x: 0, y: 0, z: 0 };
+  }
 }

@@ -2,7 +2,7 @@ import { RigidBody } from "./RigidBody";
 import { Vector3 } from "@minecraft/server";
 
 /**
- * 경사면(계단/반블록 포함)에서의 힘 적용
+ * MajestikButter Physics-Test 스타일의 부드러운 물리 계산
  */
 export class ForceManager {
   static applyGravity(body: RigidBody) {
@@ -13,36 +13,64 @@ export class ForceManager {
 
   static applyAirResistance(body: RigidBody) {
     const velocity = body.getVelocity();
-    velocity.x *= body.profile.airResistance;
-    velocity.y *= body.profile.airResistance;
-    velocity.z *= body.profile.airResistance;
+    const resistance = body.profile.airResistance;
+    
+    velocity.x *= resistance;
+    velocity.y *= resistance;
+    velocity.z *= resistance;
+    
     body.setVelocity(velocity);
+  }
+
+  static applySlopePhysics(body: RigidBody, slope: { angle: number, direction: Vector3, strength: number }) {
+    if (slope.strength < 0.05) return; // 경사가 너무 완만하면 무시
+    
+    const GRAVITY = 0.08;
+    const FRICTION = 0.15; // 마찰 계수
+    const velocity = body.getVelocity();
+    
+    // MajestikButter 스타일의 부드러운 가속도 계산
+    const slopeForce = GRAVITY * Math.sin(slope.angle) * (1 - FRICTION);
+    const dampening = 0.95; // 부드러운 움직임을 위한 감쇠
+    
+    // 경사 방향으로 힘 적용
+    velocity.x += slope.direction.x * slopeForce * dampening;
+    velocity.z += slope.direction.z * slopeForce * dampening;
+    
+    // Y축 중력 보정 (경사면에서는 수직 중력 감소)
+    velocity.y -= GRAVITY * Math.cos(slope.angle) * 0.8;
+    
+    // 최대 속도 제한
+    const maxVel = body.profile.maxVelocity;
+    velocity.x = Math.max(-maxVel.x, Math.min(velocity.x, maxVel.x));
+    velocity.z = Math.max(-maxVel.z, Math.min(velocity.z, maxVel.z));
+    
+    body.setVelocity(velocity);
+    
+    // 프로퍼티 업데이트
+    body.entity.setDynamicProperty("phys:issliding", slope.strength > 0.1);
+    body.entity.setDynamicProperty("phys:slopeangle", slope.angle * 180 / Math.PI);
   }
 
   static handleGroundCollision(body: RigidBody) {
     const velocity = body.getVelocity();
-    if (Math.abs(velocity.y) > 0.01) {
+    
+    if (Math.abs(velocity.y) > 0.02) {
+      // 바운스 효과
       velocity.y *= -body.profile.bounceFactor;
       body.setVelocity(velocity);
     } else {
-      body.setVelocity({ x: 0, y: 0, z: 0 });
+      // 완전 정지
+      velocity.y = 0;
+      body.setVelocity(velocity);
     }
+    
+    // 지면에 정확히 배치
     const loc = body.entity.location;
-    const groundPos = Math.floor(loc.y - 0.5) + 0.5;
+    const groundY = Math.floor(loc.y - 0.5) + 0.5;
     body.entity.teleport(
-      { x: loc.x, y: groundPos + 0.01, z: loc.z },
+      { x: loc.x, y: groundY + 0.01, z: loc.z },
       { dimension: body.entity.dimension }
     );
-  }
-
-  static applySlopePhysics(body: RigidBody, slope: { angle: number, direction: Vector3 }) {
-    const GRAVITY = 0.08;
-    const FRICTION = 0.1; // 계단/반블록 마찰력
-    const velocity = body.getVelocity();
-    const slopeForce = GRAVITY * Math.sin(slope.angle) * (1 - FRICTION);
-    velocity.x += slope.direction.x * slopeForce;
-    velocity.z += slope.direction.z * slopeForce;
-    velocity.y -= GRAVITY * 0.9 * Math.cos(slope.angle); // Y축 중력 보정
-    body.setVelocity(velocity);
   }
 }

@@ -3,7 +3,7 @@ export interface PhysicsProfile {
   gravityMultiplier: number;
   bounceFactor: number;
   airResistance: number;
-  maxVelocity: { x: number, y: number, z: number };
+  maxVelocity: { x: number; y: number; z: number };
 }
 
 export class PhysicsComponent {
@@ -15,7 +15,7 @@ export class PhysicsComponent {
       gravityMultiplier: config.gravityMultiplier ?? 1.0,
       bounceFactor: config.bounceFactor ?? 0.5,
       airResistance: config.airResistance ?? 0.98,
-      maxVelocity: config.maxVelocity ?? { x: 3, y: 3, z: 3 }
+      maxVelocity: config.maxVelocity ?? { x: 3, y: 3, z: 3 },
     });
   }
 
