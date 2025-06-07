@@ -1,4 +1,4 @@
-// 엔티티별 물리 프로파일을 관리하는 클래스와 인터페이스
+// 엔티티별 물리 프로파일 관리
 export interface PhysicsProfile {
   mass: number;
   gravityMultiplier: number;
@@ -10,7 +10,6 @@ export interface PhysicsProfile {
 export class PhysicsComponent {
   private static registry = new Map<string, PhysicsProfile>();
 
-  // 엔티티 식별자별로 물리 프로파일 등록
   static registerEntity(identifier: string, config: Partial<PhysicsProfile>) {
     this.registry.set(identifier, {
       mass: config.mass ?? 1.0,
@@ -21,7 +20,6 @@ export class PhysicsComponent {
     });
   }
 
-  // 엔티티 식별자로 물리 프로파일 조회
   static getProfile(entityId: string): PhysicsProfile | undefined {
     return this.registry.get(entityId);
   }

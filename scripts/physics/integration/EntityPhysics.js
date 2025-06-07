@@ -3,7 +3,7 @@ import { PhysicsComponent } from "../../components/PhysicsComponent";
 import { RigidBody } from "../core/RigidBody";
 import { ForceManager } from "../core/ForceManager";
 import { BlockCollision } from "./BlockCollision";
-// 1틱(0.05초) 주기 실행
+// 1초에 20번(1틱마다) 물리 업데이트
 system.runInterval(() => {
     const overworld = world.getDimension("overworld");
     for (const entity of overworld.getEntities()) {
@@ -11,8 +11,7 @@ system.runInterval(() => {
         if (!profile)
             continue;
         const body = new RigidBody(entity, profile);
-        ForceManager.applyGravity(body);
-        ForceManager.applyAirResistance(body);
+        ForceManager.applyPhysics(body);
         if (BlockCollision.checkGroundCollision(entity)) {
             body.setVelocity({ x: 0, y: 0, z: 0 });
             ForceManager.handleGroundCollision(body);

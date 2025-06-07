@@ -1,11 +1,16 @@
 import { world } from "@minecraft/server";
+// 블록 충돌 검출 유틸리티
 export class BlockCollision {
-    // 블록 ID 검사 메서드
     static isSolidBlock(pos) {
-        const block = world.getDimension('overworld').getBlock(pos);
-        return block ? this.SOLID_BLOCKS.has(block.typeId) : false; // id → typeId로 수정
+        try {
+            const block = world.getDimension('overworld').getBlock(pos);
+            return block?.typeId ? this.SOLID_BLOCKS.has(block.typeId) : false;
+        }
+        catch (e) {
+            console.error("BlockCollision Error:", e);
+            return false;
+        }
     }
-    // 바닥 충돌 검출 메서드 (정적 메서드로 명시)
     static checkGroundCollision(entity) {
         const feetPos = {
             x: entity.location.x,
