@@ -1,14 +1,16 @@
-import { world, system, Entity } from "@minecraft/server";
-import { BlockCollision } from "../physics/integration/BlockCollision";
+import { system, world } from "@minecraft/server";
 
 system.runInterval(() => {
   const overworld = world.getDimension("overworld");
-  const entities = overworld.getEntities({ type: "cybox:spirra" });
-  if (entities.length === 0) return;
-
-  for (const entity of entities) {
-    const velocity = entity.getVelocity();
-    entity.nameTag = `속도 Y: ${velocity.y.toFixed(2)}m/s\n` +
-                     `땅 충돌: ${BlockCollision.checkGroundCollision(entity) ? "O" : "X"}`;
+  for (const entity of overworld.getEntities({ type: "cybox:spirra" })) {
+    const velX = entity.getDynamicProperty("phys:velX") ?? 0;
+    const velY = entity.getDynamicProperty("phys:velY") ?? 0;
+    const isGrounded = entity.getDynamicProperty("phys:isGrounded") ?? 0;
+    
+    entity.nameTag = [
+      `속도 X: ${velX}`,
+      `속도 Y: ${velY}`,
+      `땅 닿음: ${isGrounded ? '✔' : '✖'}`
+    ].join('\n');
   }
-}, 10);
+}, 20); // 1초 주기

@@ -6,9 +6,6 @@ export class PhysicsState {
     const velocity = entity.getVelocity();
     const isGrounded = BlockCollision.checkGroundCollision(entity);
     
-    entity.setDynamicProperty("phys:velX", velocity.x.toFixed(2));
-    entity.setDynamicProperty("phys:velY", velocity.y.toFixed(2));
-    entity.setDynamicProperty("phys:velZ", velocity.z.toFixed(2));
     entity.setDynamicProperty("phys:isGrounded", isGrounded ? 1 : 0);
   }
 }

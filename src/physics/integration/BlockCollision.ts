@@ -1,6 +1,10 @@
 import { world, Entity, Vector3 } from "@minecraft/server";
 
 export class BlockCollision {
+  private static SOLID_BLOCKS = new Set([
+    'minecraft:stone', 'minecraft:dirt', 'minecraft:cobblestone'
+  ]);
+
   static checkGroundCollision(entity: Entity): boolean {
     const feetPos: Vector3 = {
       x: entity.location.x,
@@ -12,6 +16,6 @@ export class BlockCollision {
 
   private static isSolidBlock(pos: Vector3): boolean {
     const block = world.getDimension("overworld").getBlock(pos);
-    return block?.typeId === "minecraft:stone"; // 예시: stone 블록만 고체로 판정
+    return block ? this.SOLID_BLOCKS.has(block.typeId) : false;
   }
 }

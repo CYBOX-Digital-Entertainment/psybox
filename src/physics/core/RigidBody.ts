@@ -1,15 +1,11 @@
 import { Entity } from "@minecraft/server";
 import { PhysicsProfile } from "../../components/PhysicsComponent";
 
-// 엔티티의 물리 상태 래퍼
 export class RigidBody {
-  entity: Entity;
-  profile: PhysicsProfile;
-
-  constructor(entity: Entity, profile: PhysicsProfile) {
-    this.entity = entity;
-    this.profile = profile;
-  }
+  constructor(
+    public entity: Entity,
+    public profile: PhysicsProfile
+  ) {}
 
   getVelocity() {
     return this.entity.getVelocity();

@@ -1,4 +1,3 @@
-// 엔티티별 물리 프로파일 관리
 export interface PhysicsProfile {
   mass: number;
   gravityMultiplier: number;
