@@ -1,7 +1,10 @@
 {
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
   "dependencies": {
-    "@minecraft/server": "^1.2.0",
-    "@minecraft/server-ui": "^1.2.0",
-    "prismarine-physics": "^1.10.0"
+    "@minecraft/server": "1.2.0",  // ^ 제거
+    "prismarine-physics": "1.10.0" // 정확한 버전 지정
   }
 }

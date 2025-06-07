@@ -1,4 +1,4 @@
-{{
+{
   "format_version": 2,
   "header": {
     "name": "Physics Addon",
@@ -12,7 +12,7 @@
       "type": "script",
       "language": "javascript",
       "uuid": "e736671d-47cb-46a1-a7ff-3686e3c0cb27",
-      "entry": "scripts/main.js",
+      "entry": "dist/main.js",
       "version": [1,0,0]
     }
   ]
