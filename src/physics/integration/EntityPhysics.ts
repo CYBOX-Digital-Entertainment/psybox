@@ -15,8 +15,7 @@ system.runInterval(() => {
     ForceManager.applyPhysics(body);
 
     if (BlockCollision.checkGroundCollision(entity)) {
-      body.setVelocity({ x: 0, y: 0, z: 0 });
-      ForceManager.handleGroundCollision(body);
+      ForceManager.handleGroundCollision(body); // 기존 setVelocity(0) 제거
     }
   }
-}, 1);
+}, 1); // 1틱(0.05초) 주기 유지

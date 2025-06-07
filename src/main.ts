@@ -7,7 +7,7 @@ import "./events/DebugHud";
 PhysicsComponent.registerEntity("cybox:spirra", {
   mass: 1.5,
   gravityMultiplier: 0.8,
-  bounceFactor: 0.3,
-  airResistance: 0.98,
-  maxVelocity: { x: 2.0, y: 2.0, z: 2.0 }
+  bounceFactor: 0.6, // 0.3 → 0.6으로 증가
+  airResistance: 0.9, // 0.98 → 0.9로 변경
+  maxVelocity: { x: 5.0, y: 5.0, z: 5.0 } // 2.0 → 5.0으로 상향
 });

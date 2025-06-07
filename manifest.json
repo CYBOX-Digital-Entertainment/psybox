@@ -11,7 +11,7 @@
     {
       "type": "script",
       "language": "javascript",
-      "entry": "scripts/main.js"
+      "entry": "dist/main.js"
     }
   ],
   "dependencies": [

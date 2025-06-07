@@ -1,6 +1,6 @@
 import { world, system, Entity } from "@minecraft/server";
 
-// 네임태그로 속도를 실시간 표시
+// 네임태그를 통한 실시간 속도 표시 (안정화 API만 사용)
 system.runInterval(() => {
   const overworld = world.getDimension("overworld");
   const entities = overworld.getEntities({ type: "cybox:spirra" });
@@ -8,8 +8,7 @@ system.runInterval(() => {
 
   for (const entity of entities) {
     const velocity = entity.getVelocity();
-    entity.nameTag = `속도: X=${velocity.x.toFixed(2)} Y=${velocity.y.toFixed(2)} Z=${velocity.z.toFixed(2)}`;
-    // 디버깅용 로그
-    console.log("속도 업데이트 성공");
+    entity.nameTag = `속도: ${velocity.y.toFixed(2)}m/s`;
+    console.log("Y속도:", velocity.y); // Y축 속도만 집중 모니터링
   }
-}, 5); // 0.25초마다 갱신
+}, 10); // 0.5초 주기

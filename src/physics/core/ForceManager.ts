@@ -15,19 +15,25 @@ export class ForceManager {
   }
 
   static applyAirResistance(body: RigidBody) {
-    const velocity = body.getVelocity();
-    velocity.x *= body.profile.airResistance;
-    velocity.y *= body.profile.airResistance;
-    velocity.z *= body.profile.airResistance;
-    body.setVelocity(velocity);
-  }
+  const velocity = body.getVelocity();
+  // Y축에만 공기 저항 적용 (실제 물리 현상과 유사하게)
+  velocity.y *= body.profile.airResistance;
+  body.setVelocity(velocity);
+}
+
 
   static handleGroundCollision(body: RigidBody) {
-    const loc = body.entity.location;
-    const groundPos = Math.floor(loc.y - 0.5) + 0.5;
-    (body.entity as Entity).teleport(
-      { x: loc.x, y: groundPos, z: loc.z },
-      { dimension: body.entity.dimension }
-    );
-  }
+  const velocity = body.getVelocity();
+  // Y축 반발력 적용 (기존 0으로 초기화하지 않음)
+  velocity.y *= -body.profile.bounceFactor;
+  body.setVelocity(velocity);
+
+  // 위치 보정
+  const loc = body.entity.location;
+  const groundPos = Math.floor(loc.y - 0.5) + 0.5;
+  body.entity.teleport(
+    { x: loc.x, y: groundPos + 0.1, z: loc.z }, // 0.1만큼 위로 보정
+    { dimension: body.entity.dimension }
+  );
+}
 }
