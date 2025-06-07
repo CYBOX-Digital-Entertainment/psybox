@@ -15,6 +15,15 @@ export class ForceManager {
     body.setVelocity(velocity);
   }
 
+  static applySlopePhysics(body: RigidBody, angle: number) {
+  const slopeForce = 0.08 * Math.sin(angle) * body.profile.mass;
+  body.setVelocity({ 
+    x: body.getVelocity().x + slopeForce,
+    y: body.getVelocity().y,
+    z: body.getVelocity().z
+  });
+}
+
   static handleGroundCollision(body: RigidBody) {
     const loc = body.entity.location;
     const groundPos = Math.floor(loc.y - 0.5) + 0.5;
