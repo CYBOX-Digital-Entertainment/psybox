@@ -4,7 +4,7 @@ import { RigidBody } from "../core/RigidBody";
 import { ForceManager } from "../core/ForceManager";
 import { BlockCollision } from "./BlockCollision";
 
-// 1초에 20번(1틱마다) 물리 업데이트
+// 1틱(0.05초)마다 물리 업데이트
 system.runInterval(() => {
   const overworld = world.getDimension("overworld");
   for (const entity of overworld.getEntities()) {
