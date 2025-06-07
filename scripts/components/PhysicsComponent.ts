@@ -1,3 +1,5 @@
+import { PhysicsProfile } from "./PhysicsComponent";
+
 export interface PhysicsProfile {
   mass: number;
   gravityMultiplier: number;

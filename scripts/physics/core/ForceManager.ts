@@ -1,6 +1,5 @@
 import { RigidBody } from "./RigidBody";
 
-// 중력, 가속도 등 힘을 적용하는 유틸리티
 export class ForceManager {
   static applyGravity(body: RigidBody) {
     const velocity = body.getVelocity();
