@@ -1,26 +1,27 @@
 import { system, world } from "@minecraft/server";
-import { SlopeDetector } from "../physics/integration/SlopeDetector";
-import { BlockCollision } from "../physics/integration/BlockCollision";
 
 system.runInterval(() => {
-  const overworld = world.getDimension("overworld");
-  
-  for (const entity of overworld.getEntities({ type: "cybox:spirra" })) {
-    const velocity = entity.getVelocity();
-    const slope = SlopeDetector.getSlopeInfo(entity);
-    const isGrounded = BlockCollision.checkGroundCollision(entity);
+  try {
+    const overworld = world.getDimension("overworld");
+    const entities = overworld.getEntities({ type: "cybox:spirra" });
     
-    // 네임태그에 실시간 정보 표시
-    entity.nameTag = [
-      `속도: ${Math.sqrt(velocity.x*velocity.x + velocity.z*velocity.z).toFixed(2)}m/s`,
-      `경사: ${(slope.angle * 180/Math.PI).toFixed(1)}°`,
-      `미끄러짐: ${slope.strength > 0.1 ? "O" : "X"}`,
-      `지면: ${isGrounded ? "O" : "X"}`
-    ].join('\n');
-    
-    // 콘솔 디버깅 (필요시)
-    if (slope.strength > 0.1) {
-      console.log(`Spirra 경사 감지: ${(slope.angle * 180/Math.PI).toFixed(1)}°, 강도: ${slope.strength.toFixed(2)}`);
+    for (const entity of entities) {
+      try {
+        const velocity = entity.getVelocity();
+        const isSliding = entity.getDynamicProperty("phys:issliding") || false;
+        const slopeAngle = entity.getDynamicProperty("phys:slopeangle") || 0;
+        
+        entity.nameTag = [
+          `속도: ${Math.sqrt(velocity.x*velocity.x + velocity.z*velocity.z).toFixed(2)}m/s`,
+          `미끄러짐: ${isSliding ? "O" : "X"}`,
+          `경사: ${Number(slopeAngle).toFixed(1)}°`
+        ].join('\n');
+        
+      } catch (entityError) {
+        // 개별 엔티티 디버그 오류 무시
+      }
     }
+  } catch (systemError) {
+    // 디버그 시스템 오류 무시
   }
-}, 20); // 1초마다 업데이트
+}, 40); // 2초마다 업데이트
