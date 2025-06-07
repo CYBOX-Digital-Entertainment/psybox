@@ -1,9 +1,5 @@
 import { world, Entity, Vector3 } from "@minecraft/server";
 
-/**
- * MACHINE_BUILDER 방식의 레이캐스트 기반 경사면 검출
- * 계단/반블록의 정확한 높이 계산 지원
- */
 export class SlopeDetector {
   private static readonly STEP_BLOCKS = new Set([
     'minecraft:oak_stairs', 'minecraft:stone_stairs', 'minecraft:brick_stairs',
@@ -19,35 +15,40 @@ export class SlopeDetector {
     const pos = entity.location;
     const overworld = world.getDimension("overworld");
     
-    // 4방향 검출 (MACHINE_BUILDER 방식)
+    // 더 정밀한 4방향 검출
     const directions = [
-      { vec: { x: 0.6, y: 0, z: 0 }, name: 'x+' },
-      { vec: { x: -0.6, y: 0, z: 0 }, name: 'x-' },
-      { vec: { x: 0, y: 0, z: 0.6 }, name: 'z+' },
-      { vec: { x: 0, y: 0, z: -0.6 }, name: 'z-' }
+      { vec: { x: 0.8, y: 0, z: 0 }, name: 'x+' },
+      { vec: { x: -0.8, y: 0, z: 0 }, name: 'x-' },
+      { vec: { x: 0, y: 0, z: 0.8 }, name: 'z+' },
+      { vec: { x: 0, y: 0, z: -0.8 }, name: 'z-' }
     ];
     
     let maxSlope = { angle: 0, direction: { x: 0, y: 0, z: 0 }, strength: 0 };
     
     for (const dir of directions) {
       const checkPos = {
-        x: pos.x + dir.vec.x,
+        x: Math.floor(pos.x + dir.vec.x),
         y: Math.floor(pos.y),
-        z: pos.z + dir.vec.z
+        z: Math.floor(pos.z + dir.vec.z)
       };
       
       try {
         const block = overworld.getBlock(checkPos);
-        const heightDiff = this.calculateBlockHeight(block, pos.y) - pos.y;
+        const heightDiff = this.calculateAccurateBlockHeight(block, pos) - pos.y;
         
-        if (Math.abs(heightDiff) > 0.05) {
-          const angle = Math.atan(heightDiff / 0.6);
-          const strength = Math.abs(Math.sin(angle));
+        if (Math.abs(heightDiff) > 0.1) { // 임계값 증가
+          const distance = Math.sqrt(dir.vec.x**2 + dir.vec.z**2);
+          const angle = Math.atan(heightDiff / distance);
+          const strength = Math.abs(heightDiff) / distance;
           
           if (strength > maxSlope.strength) {
             maxSlope = {
               angle: angle,
-              direction: this.normalizeVector(dir.vec),
+              direction: this.normalizeVector({ 
+                x: heightDiff > 0 ? -dir.vec.x : dir.vec.x,
+                y: 0,
+                z: heightDiff > 0 ? -dir.vec.z : dir.vec.z
+              }),
               strength: strength
             };
           }
@@ -60,22 +61,22 @@ export class SlopeDetector {
     return maxSlope;
   }
   
-  private static calculateBlockHeight(block: any, entityY: number): number {
-    if (!block?.typeId) return entityY;
+  private static calculateAccurateBlockHeight(block: any, entityPos: Vector3): number {
+    if (!block?.typeId) return entityPos.y;
     
     const baseY = block.y;
     
-    // 계단 블록 처리
-    if (this.STEP_BLOCKS.has(block.typeId)) {
-      return baseY + 0.5; // 계단 높이
-    }
-    
-    // 반블록 처리  
+    // 반블록 처리 (정확히 0.5 높이)
     if (this.SLAB_BLOCKS.has(block.typeId)) {
-      return baseY + 0.5; // 반블록 높이
+      return baseY + 0.5;
     }
     
-    // 일반 블록
+    // 계단 처리 (0.5 높이이지만 방향 고려)
+    if (this.STEP_BLOCKS.has(block.typeId)) {
+      return baseY + 0.5;
+    }
+    
+    // 일반 블록 (1.0 높이)
     return baseY + 1.0;
   }
   
