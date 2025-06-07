@@ -1,7 +1,7 @@
 import { Entity } from "@minecraft/server";
 import { PhysicsProfile } from "../../components/PhysicsComponent";
 
-// 엔티티의 물리 상태를 래핑하는 클래스
+// 엔티티의 물리 상태 래퍼
 export class RigidBody {
   entity: Entity;
   profile: PhysicsProfile;
