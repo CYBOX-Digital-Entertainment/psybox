@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@minecraft/server": "^1.20.0",
+    "sopiro-physics-module": "^2.4.1",
+    "prismarine-physics": "^3.5.0"
+  }
+}

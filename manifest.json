@@ -1,0 +1,19 @@
+{{
+  "format_version": 2,
+  "header": {
+    "name": "Physics Addon",
+    "description": "Custom physics engine implementation",
+    "uuid": "ab3e4460-80bc-414f-943f-ac13c2005db6",
+    "version": [1,0,0],
+    "min_engine_version": [1,20,0]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "e736671d-47cb-46a1-a7ff-3686e3c0cb27",
+      "entry": "scripts/main.js",
+      "version": [1,0,0]
+    }
+  ]
+}
