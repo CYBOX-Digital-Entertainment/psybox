@@ -1,11 +1,11 @@
 import { RigidBody } from "./RigidBody";
 
+// 두 강체의 충돌을 단순 처리 (반발력 적용)
 export class CollisionSolver {
   static resolveCollision(bodyA: RigidBody, bodyB: RigidBody) {
     const vA = bodyA.getVelocity();
     const vB = bodyB.getVelocity();
 
-    // 튕김 효과 적용 (단순 예시)
     vA.x *= -bodyA.profile.bounceFactor;
     vA.y *= -bodyA.profile.bounceFactor;
     vA.z *= -bodyA.profile.bounceFactor;

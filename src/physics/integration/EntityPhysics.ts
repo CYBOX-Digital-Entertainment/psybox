@@ -1,7 +1,24 @@
-// src/physics/integration/EntityPhysics.ts
+import { system, world, Entity } from "@minecraft/server";
+import { PhysicsComponent } from "../../components/PhysicsComponent";
+import { RigidBody } from "../core/RigidBody";
+import { ForceManager } from "../core/ForceManager";
 import { BlockCollision } from "./BlockCollision";
 
-// 기존 틱 이벤트 내부 추가
-if (BlockCollision.checkGroundCollision(entity)) {
-  velocity.y = 0; // 바닥에 서있을 때 중력 초기화
-}
+// 시스템 틱 주기로 물리 시뮬레이션 실행
+system.runInterval(() => {
+  const overworld = world.getDimension("overworld");
+  
+  for (const entity of overworld.getEntities()) {
+    const profile = PhysicsComponent.getProfile(entity.typeId);
+    if (!profile) continue;
+
+    const body = new RigidBody(entity, profile);
+    ForceManager.applyGravity(body);
+    ForceManager.applyAirResistance(body);
+
+    if (BlockCollision.checkGroundCollision(entity)) {
+      body.setVelocity({ x: 0, y: 0, z: 0 });
+      ForceManager.handleGroundCollision(body);
+    }
+  }
+}, 1); // 1틱(0.05초) 주기
