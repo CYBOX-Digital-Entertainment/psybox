@@ -1,23 +1,30 @@
 {
   "format_version": 2,
   "header": {
-    "name": "Physics Addon",
-    "description": "Custom physics engine implementation",
-    "uuid": "ab3e4460-80bc-414f-943f-ac13c2005db6",
-    "version": [1,0,0],
-    "min_engine_version": [1,21,82]
+    "name": "§6psybox",
+    "description": "§7Script API 2.1.0-beta 기반 경사면 물리엔진\n§e자연스러운 미끄러짐과 부드러운 물리 효과",
+    "uuid": "5e72f61c-face-4e56-8763-7eb8b8482ab2",
+    "version": [2, 1, 0],
+    "min_engine_version": [1, 21, 82]
   },
   "modules": [
     {
       "type": "script",
-      "language": "javascript",
-      "entry": "dist/main.js"
+      "language": "javascript", 
+      "uuid": "af0c1af8-9264-4f52-b74b-94ad70ada807",
+      "version": [2, 1, 0],
+      "entry": "scripts/main.js"
     }
   ],
   "dependencies": [
     {
       "module_name": "@minecraft/server",
-      "version": "1.14.0"
+      "version": "2.1.0-beta"
+    },
+    {
+      "module_name": "@minecraft/server-gametest", 
+      "version": "2.0.0-beta"
     }
-  ]
+  ],
+  "capabilities": ["script_eval", "early_execution"]
 }

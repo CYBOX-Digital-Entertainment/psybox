@@ -1,16 +1,26 @@
 {
   "name": "cybox-spirra-physics",
-  "version": "4.0.0",
-  "description": "Minecraft Bedrock 1.21.82 Physics Engine",
+  "version": "2.1.0",
+  "description": "Minecraft Bedrock Script API 2.1.0-beta 물리엔진",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "clean": "rimraf dist",
+    "dev": "tsc --watch"
   },
+  "keywords": ["minecraft", "physics", "bedrock", "addon"],
+  "author": "Cybox Digital Entertainment",
+  "license": "MIT",
   "dependencies": {
-    "@minecraft/server": "1.14.0"
+    "@minecraft/server": "2.1.0-beta",
+    "@minecraft/server-gametest": "2.0.0-beta"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.3.0",
+    "rimraf": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
