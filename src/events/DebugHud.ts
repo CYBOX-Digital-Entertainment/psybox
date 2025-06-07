@@ -1,16 +1,15 @@
 import { system, world } from "@minecraft/server";
+import { SlopeDetector } from "../physics/integration/SlopeDetector";
 
 system.runInterval(() => {
   const overworld = world.getDimension("overworld");
   for (const entity of overworld.getEntities({ type: "cybox:spirra" })) {
-    const velX = entity.getDynamicProperty("phys:velX") ?? 0;
-    const velY = entity.getDynamicProperty("phys:velY") ?? 0;
-    const isGrounded = entity.getDynamicProperty("phys:isGrounded") ?? 0;
-    
+    const velocity = entity.getVelocity();
+    const slope = SlopeDetector.getSlopeInfo(entity);
     entity.nameTag = [
-      `속도 X: ${velX}`,
-      `속도 Y: ${velY}`,
-      `땅 닿음: ${isGrounded ? '✔' : '✖'}`
+      `각도: ${(slope.angle * 180 / Math.PI).toFixed(1)}°`,
+      `속도 X: ${velocity.x.toFixed(2)}`,
+      `속도 Z: ${velocity.z.toFixed(2)}`
     ].join('\n');
   }
-}, 20); // 1초 주기
+}, 10);

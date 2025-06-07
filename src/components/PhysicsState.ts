@@ -4,8 +4,8 @@ import { BlockCollision } from "../physics/integration/BlockCollision";
 export class PhysicsState {
   static update(entity: Entity) {
     const velocity = entity.getVelocity();
-    const isGrounded = BlockCollision.checkGroundCollision(entity);
+    const isgrounded = BlockCollision.checkGroundCollision(entity);
     
-    entity.setDynamicProperty("phys:isGrounded", isGrounded ? 1 : 0);
+    entity.setDynamicProperty("phys:isgrounded", isgrounded ? 1 : 0);
   }
 }
