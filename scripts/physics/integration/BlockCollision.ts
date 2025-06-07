@@ -1,14 +1,14 @@
-// physics/integration/BlockCollision.ts
-import { world, Block } from "@minecraft/server";
+import { world } from "@minecraft/server";
 
-class BlockCollisionDetector {
-  private static readonly SOLID_BLOCKS = new Set([
-    'minecraft:stone', 'minecraft:dirt', /* ... */
-  ]);
-
-  static checkCollision(position: Vector3): boolean {
-    const block = world.getDimension('overworld')
-      .getBlock(position);
-    return block && this.SOLID_BLOCKS.has(block.typeId);
+export class BlockCollision {
+  static isSolidBlock(pos: { x: number, y: number, z: number }): boolean {
+    const block = world.getDimension("overworld").getBlock(pos);
+    if (!block) return false;
+    // 간단 예시: 주요 고체 블록만 체크
+    const solidBlocks = [
+      "minecraft:stone", "minecraft:dirt", "minecraft:cobblestone",
+      "minecraft:planks", "minecraft:bedrock", "minecraft:glass"
+    ];
+    return solidBlocks.includes(block.typeId);
   }
 }
