@@ -5,18 +5,13 @@
   "main": "scripts/main.js",
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch",
-    "clean": "rimraf scripts",
-    "deploy": "npm run build && xcopy scripts ..\\development_behavior_packs\\psybox\\scripts /E /Y"
+    "watch": "tsc --watch"
   },
   "dependencies": {
     "@minecraft/server": "2.0.0-beta",
     "@minecraft/server-gametest": "1.0.0-beta"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "rimraf": "^3.0.2"
-  },
-  "author": "CYBOX Digital Entertainment",
-  "license": "MIT"
+    "typescript": "^5.0.0"
+  }
 }

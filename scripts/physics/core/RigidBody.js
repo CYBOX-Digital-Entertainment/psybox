@@ -1,6 +1,3 @@
-/**
- * Script API 2.0.0-beta 호환 강체 물리 클래스
- */
 export class RigidBody {
     constructor(entity, profile) {
         this.entity = entity;
@@ -16,54 +13,25 @@ export class RigidBody {
     }
     setVelocity(velocity) {
         try {
-            // Script API 2.0.0-beta - 더 안전한 속도 설정
             const current = this.entity.getVelocity();
             const impulse = {
                 x: velocity.x - current.x,
                 y: velocity.y - current.y,
                 z: velocity.z - current.z
             };
-            // 최대 속도 제한 적용
-            const maxVel = this.profile.maxVelocity;
-            impulse.x = Math.max(-maxVel.x, Math.min(impulse.x, maxVel.x));
-            impulse.y = Math.max(-maxVel.y, Math.min(impulse.y, maxVel.y));
-            impulse.z = Math.max(-maxVel.z, Math.min(impulse.z, maxVel.z));
             this.entity.applyImpulse(impulse);
         }
         catch (error) {
-            // 속도 설정 실패는 조용히 무시
+            // 속도 설정 실패 무시
         }
     }
-    getLocation() {
-        try {
-            return this.entity.location;
-        }
-        catch (error) {
-            return { x: 0, y: 0, z: 0 };
-        }
-    }
-    getRotation() {
-        try {
-            return this.entity.getRotation();
-        }
-        catch (error) {
-            return { x: 0, y: 0 };
-        }
-    }
+    // isDead 속성 제거하고 isValid()만 사용
     isValid() {
         try {
-            return this.entity.isValid() && !this.entity.isDead;
+            return this.entity.isValid();
         }
         catch (error) {
             return false;
-        }
-    }
-    updateDynamicProperty(key, value) {
-        try {
-            this.entity.setDynamicProperty(key, value);
-        }
-        catch (error) {
-            // 동적 프로퍼티 설정 실패는 무시
         }
     }
 }
