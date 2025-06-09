@@ -1,3 +1,6 @@
+/**
+ * Script API 2.0.0-beta 호환 물리 컴포넌트 시스템
+ */
 export class PhysicsComponent {
     static registerEntity(identifier, config) {
         const profile = {
@@ -7,12 +10,10 @@ export class PhysicsComponent {
             airResistance: config.airResistance ?? 0.98,
             maxVelocity: config.maxVelocity ?? { x: 3, y: 3, z: 3 },
             slopeForce: config.slopeForce ?? 0.1,
-            frictionCoefficient: config.frictionCoefficient ?? 0.1
+            frictionCoefficient: config.frictionCoefficient ?? 0.15
         };
         this.registry.set(identifier, profile);
-        console.log(`🔧 Physics Profile Registered: ${identifier}`);
-        console.log(`   Mass: ${profile.mass}, Gravity: ${profile.gravityMultiplier}x`);
-        console.log(`   Max Velocity: ${JSON.stringify(profile.maxVelocity)}`);
+        console.log(`🔧 물리 프로파일 등록: ${identifier}`);
         this.isInitialized = true;
     }
     static getProfile(entityId) {
@@ -21,14 +22,11 @@ export class PhysicsComponent {
     static getAllProfiles() {
         return new Map(this.registry);
     }
-    static isProfileRegistered(entityId) {
-        return this.registry.has(entityId);
-    }
-    static getRegisteredCount() {
-        return this.registry.size;
-    }
     static isSystemInitialized() {
         return this.isInitialized;
+    }
+    static getProfileCount() {
+        return this.registry.size;
     }
 }
 PhysicsComponent.registry = new Map();

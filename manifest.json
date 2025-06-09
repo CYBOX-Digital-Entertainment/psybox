@@ -1,30 +1,30 @@
 {
   "format_version": 2,
   "header": {
-    "name": "§6psybox",
-    "description": "§7Script API 2.1.0-beta 기반 경사면 물리엔진\n§e자연스러운 미끄러짐과 부드러운 물리 효과",
+    "name": "Psybox Physics Engine",
+    "description": "Advanced Physics Engine for Minecraft Bedrock using Script API 2.0.0-beta",
     "uuid": "5e72f61c-face-4e56-8763-7eb8b8482ab2",
-    "version": [2, 1, 0],
-    "min_engine_version": [1, 21, 82]
+    "version": [2, 0, 0],
+    "min_engine_version": [1, 21, 80]
   },
   "modules": [
     {
       "type": "script",
-      "language": "javascript", 
+      "language": "javascript",
       "uuid": "af0c1af8-9264-4f52-b74b-94ad70ada807",
-      "version": [2, 1, 0],
+      "version": [2, 0, 0],
       "entry": "scripts/main.js"
     }
   ],
   "dependencies": [
     {
       "module_name": "@minecraft/server",
-      "version": "2.1.0-beta"
+      "version": "2.0.0-beta"
     },
     {
-      "module_name": "@minecraft/server-gametest", 
-      "version": "2.0.0-beta"
+      "module_name": "@minecraft/server-gametest",
+      "version": "1.0.0-beta"
     }
   ],
-  "capabilities": ["script_eval", "early_execution"]
+  "capabilities": ["script_eval"]
 }

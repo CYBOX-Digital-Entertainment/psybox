@@ -4,16 +4,15 @@
     "module": "ES2020", 
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
     "baseUrl": "./src",
     "outDir": "./scripts",
     "declaration": false,
     "strict": true,
     "noImplicitAny": false,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "scripts", "dist"]
+  "exclude": ["node_modules", "scripts"]
 }
