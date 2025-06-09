@@ -6,7 +6,7 @@ export class ForceManager {
             body.setVelocity(velocity);
         }
         catch (error) {
-            // 중력 적용 실패 무시
+            // 중력 적용 실패 시 무시
         }
     }
     static applyAirResistance(body) {
@@ -19,30 +19,34 @@ export class ForceManager {
             body.setVelocity(velocity);
         }
         catch (error) {
-            // 공기저항 적용 실패 무시
+            // 공기저항 적용 실패 시 무시
         }
     }
     static applySlopePhysics(body, slope) {
+        if (slope.strength < 0.01)
+            return;
         try {
-            if (slope.strength < 0.01)
-                return;
             const GRAVITY = 0.08;
             const velocity = body.getVelocity();
-            const slopeForce = GRAVITY * slope.strength * 2.0;
-            velocity.x += slope.direction.x * slopeForce;
-            velocity.z += slope.direction.z * slopeForce;
+            const dir = this.normalizeVector(slope.direction);
+            // 경사면 힘 계산
+            const slopeForce = body.profile.slopeForce * slope.strength * 2.0;
+            velocity.x += dir.x * slopeForce;
+            velocity.z += dir.z * slopeForce;
+            // Y축 중력 보정
             velocity.y -= GRAVITY * Math.cos(slope.angle) * 0.8;
-            // 최대 속도 제한
+            // 속도 제한
             const maxVel = body.profile.maxVelocity;
             velocity.x = Math.max(-maxVel.x, Math.min(velocity.x, maxVel.x));
             velocity.z = Math.max(-maxVel.z, Math.min(velocity.z, maxVel.z));
             body.setVelocity(velocity);
             // 프로퍼티 업데이트
-            body.entity.setDynamicProperty("phys:issliding", slope.strength > 0.1);
-            body.entity.setDynamicProperty("phys:slopeangle", slope.angle * 180 / Math.PI);
+            body.setDynamicProperty("phys:issliding", slope.strength > 0.05);
+            body.setDynamicProperty("phys:slopeangle", slope.angle * 180 / Math.PI);
+            body.setDynamicProperty("phys:slopestrength", slope.strength);
         }
         catch (error) {
-            // 경사면 물리 적용 실패 무시
+            // 경사면 물리 적용 실패 시 무시
         }
     }
     static handleGroundCollision(body) {
@@ -56,12 +60,16 @@ export class ForceManager {
                 velocity.y = 0;
                 body.setVelocity(velocity);
             }
-            const loc = body.entity.location;
+            const loc = body.getLocation();
             const groundY = Math.floor(loc.y - 0.5) + 0.5;
-            body.entity.teleport({ x: loc.x, y: groundY + 0.01, z: loc.z }, { dimension: body.entity.dimension });
+            body.teleport({ x: loc.x, y: groundY + 0.01, z: loc.z });
         }
         catch (error) {
-            // 충돌 처리 실패 무시
+            // 충돌 처리 실패 시 무시
         }
+    }
+    static normalizeVector(v) {
+        const length = Math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2);
+        return length > 0 ? { x: v.x / length, y: v.y / length, z: v.z / length } : { x: 0, y: 0, z: 0 };
     }
 }

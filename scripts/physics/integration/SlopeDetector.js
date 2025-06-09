@@ -3,26 +3,27 @@ export class SlopeDetector {
     static getSlopeInfo(entity) {
         const pos = entity.location;
         const overworld = world.getDimension("overworld");
-        try {
-            // 4방향 검출
-            const directions = [
-                { vec: { x: 0.6, y: 0, z: 0 }, name: 'x+' },
-                { vec: { x: -0.6, y: 0, z: 0 }, name: 'x-' },
-                { vec: { x: 0, y: 0, z: 0.6 }, name: 'z+' },
-                { vec: { x: 0, y: 0, z: -0.6 }, name: 'z-' }
-            ];
-            let maxSlope = { angle: 0, direction: { x: 0, y: 0, z: 0 }, strength: 0 };
-            for (const dir of directions) {
+        // 4방향 경사면 검출
+        const directions = [
+            { vec: { x: 0.8, y: 0, z: 0 }, name: 'x+' },
+            { vec: { x: -0.8, y: 0, z: 0 }, name: 'x-' },
+            { vec: { x: 0, y: 0, z: 0.8 }, name: 'z+' },
+            { vec: { x: 0, y: 0, z: -0.8 }, name: 'z-' }
+        ];
+        let maxSlope = { angle: 0, direction: { x: 0, y: 0, z: 0 }, strength: 0 };
+        for (const dir of directions) {
+            try {
                 const checkPos = {
                     x: Math.floor(pos.x + dir.vec.x),
                     y: Math.floor(pos.y),
                     z: Math.floor(pos.z + dir.vec.z)
                 };
                 const block = overworld.getBlock(checkPos);
-                const heightDiff = this.calculateBlockHeight(block, pos.y) - pos.y;
+                const heightDiff = this.calculateBlockHeight(block, pos) - pos.y;
                 if (Math.abs(heightDiff) > 0.1) {
-                    const angle = Math.atan(heightDiff / 0.6);
-                    const strength = Math.abs(heightDiff) / 0.6;
+                    const distance = Math.sqrt(dir.vec.x ** 2 + dir.vec.z ** 2);
+                    const angle = Math.atan(heightDiff / distance);
+                    const strength = Math.abs(heightDiff) / distance;
                     if (strength > maxSlope.strength) {
                         maxSlope = {
                             angle: angle,
@@ -36,22 +37,22 @@ export class SlopeDetector {
                     }
                 }
             }
-            return maxSlope;
+            catch (error) {
+                // 블록 접근 실패 시 무시
+            }
         }
-        catch (error) {
-            return { angle: 0, direction: { x: 0, y: 0, z: 0 }, strength: 0 };
-        }
+        return maxSlope;
     }
-    static calculateBlockHeight(block, entityY) {
+    static calculateBlockHeight(block, entityPos) {
         if (!block?.typeId)
-            return entityY;
-        const baseY = block.y;
-        // 계단 블록 처리
-        if (this.STEP_BLOCKS.has(block.typeId)) {
+            return entityPos.y;
+        const baseY = block.location.y;
+        // 반블록 처리
+        if (this.SLAB_BLOCKS.has(block.typeId)) {
             return baseY + 0.5;
         }
-        // 반블록 처리  
-        if (this.SLAB_BLOCKS.has(block.typeId)) {
+        // 계단 처리
+        if (this.STEP_BLOCKS.has(block.typeId)) {
             return baseY + 0.5;
         }
         // 일반 블록

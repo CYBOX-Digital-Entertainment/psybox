@@ -25,11 +25,39 @@ export class RigidBody {
       };
       this.entity.applyImpulse(impulse);
     } catch (error) {
-      // 속도 설정 실패 무시
+      // 속도 설정 실패 시 무시
     }
   }
 
-  // isDead 속성 제거하고 isValid()만 사용
+  getLocation() {
+    return this.entity.location;
+  }
+
+  teleport(location: { x: number, y: number, z: number }) {
+    try {
+      this.entity.teleport(location, { dimension: this.entity.dimension });
+    } catch (error) {
+      // 텔레포트 실패 시 무시
+    }
+  }
+
+  setDynamicProperty(property: string, value: string | number | boolean) {
+    try {
+      this.entity.setDynamicProperty(property, value);
+    } catch (error) {
+      // 프로퍼티 설정 실패 시 무시
+    }
+  }
+
+  getDynamicProperty(property: string): string | number | boolean | undefined {
+    try {
+      return this.entity.getDynamicProperty(property);
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  // isDead 속성 제거, isValid()만 사용
   isValid(): boolean {
     try {
       return this.entity.isValid();
