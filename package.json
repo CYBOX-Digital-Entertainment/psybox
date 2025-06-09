@@ -1,15 +1,15 @@
 {
   "name": "psybox-physics-engine",
   "version": "2.0.0-beta",
-  "description": "Advanced slope physics engine for Minecraft Bedrock",
-  "main": "scripts/main.js",
+  "description": "Minecraft Bedrock 1.21.82 Physics Engine - Script API 2.0.0-beta",
+  "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch"
   },
   "dependencies": {
-    "@minecraft/server": "^2.0.0-beta.1.21.82-stable",
-    "@minecraft/server-gametest": "^1.0.0-beta.1.21.70-stable"
+    "@minecraft/server": "2.0.0-beta.1.21.82-stable",
+    "@minecraft/server-gametest": "1.0.0-beta.1.21.70-stable"
   },
   "devDependencies": {
     "typescript": "^5.0.0"

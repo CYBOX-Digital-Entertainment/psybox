@@ -9,14 +9,8 @@
     "declaration": false,
     "strict": true,
     "noImplicitAny": false,
-    "skipLibCheck": true,
-    "esModuleInterop": true
+    "skipLibCheck": true
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "scripts"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "scripts"]
 }

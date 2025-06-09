@@ -25,42 +25,35 @@ export class RigidBody {
       };
       this.entity.applyImpulse(impulse);
     } catch (error) {
-      // 속도 설정 실패 시 무시
+      // 속도 설정 실패 무시
     }
   }
 
-  getLocation() {
-    return this.entity.location;
-  }
-
-  teleport(location: { x: number, y: number, z: number }) {
+  getDynamicProperty(property: string): number | boolean | string | undefined {
     try {
-      this.entity.teleport(location, { dimension: this.entity.dimension });
-    } catch (error) {
-      // 텔레포트 실패 시 무시
-    }
-  }
-
-  setDynamicProperty(property: string, value: string | number | boolean) {
-    try {
-      this.entity.setDynamicProperty(property, value);
-    } catch (error) {
-      // 프로퍼티 설정 실패 시 무시
-    }
-  }
-
-  getDynamicProperty(property: string): string | number | boolean | undefined {
-    try {
-      return this.entity.getDynamicProperty(property);
+      const value = this.entity.getDynamicProperty(property);
+      // Vector3 타입 제외하고 반환
+      if (typeof value === 'object' && value !== null && 'x' in value) {
+        return undefined;
+      }
+      return value as number | boolean | string | undefined;
     } catch (error) {
       return undefined;
     }
   }
 
-  // isDead 속성 제거, isValid()만 사용
+  setDynamicProperty(property: string, value: number | boolean | string) {
+    try {
+      this.entity.setDynamicProperty(property, value);
+    } catch (error) {
+      // 프로퍼티 설정 실패 무시
+    }
+  }
+
   isValid(): boolean {
     try {
-      return this.entity.isValid();
+      // Script API 2.0.0-beta에서 isValid는 속성입니다
+      return this.entity.isValid;
     } catch (error) {
       return false;
     }

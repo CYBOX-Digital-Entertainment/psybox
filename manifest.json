@@ -1,30 +1,18 @@
 {
   "format_version": 2,
   "header": {
-    "name": "Psybox Physics Engine v2.0.0-beta",
-    "description": "Advanced slope physics engine for Minecraft Bedrock 1.21.82",
+    "name": "Psybox Physics Engine",
+    "description": "Script API 2.0.0-beta 물리엔진",
     "uuid": "1c81c200-0c67-4932-8e84-d18dba5550e3",
-    "version": [
-      2,
-      0,
-      0
-    ],
-    "min_engine_version": [
-      1,
-      21,
-      82
-    ]
+    "version": [2, 0, 0],
+    "min_engine_version": [1, 21, 82]
   },
   "modules": [
     {
       "type": "script",
       "language": "javascript",
       "uuid": "3e5f6789-abcd-1234-5678-901234567890",
-      "version": [
-        2,
-        0,
-        0
-      ],
+      "version": [2, 0, 0],
       "entry": "scripts/main.js"
     }
   ],
@@ -34,11 +22,9 @@
       "version": "2.0.0-beta"
     },
     {
-      "module_name": "@minecraft/server-gametest.1.21.82-stable",
-      "version": "1.0.0-beta.1.21.70-stable"
+      "module_name": "@minecraft/server-gametest",
+      "version": "1.0.0-beta"
     }
   ],
-  "capabilities": [
-    "script_eval"
-  ]
+  "capabilities": ["script_eval"]
 }

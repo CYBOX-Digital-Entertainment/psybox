@@ -3,7 +3,6 @@ export class SlopeDetector {
     static getSlopeInfo(entity) {
         const pos = entity.location;
         const overworld = world.getDimension("overworld");
-        // 4방향 경사면 검출
         const directions = [
             { vec: { x: 0.8, y: 0, z: 0 }, name: 'x+' },
             { vec: { x: -0.8, y: 0, z: 0 }, name: 'x-' },
@@ -12,14 +11,14 @@ export class SlopeDetector {
         ];
         let maxSlope = { angle: 0, direction: { x: 0, y: 0, z: 0 }, strength: 0 };
         for (const dir of directions) {
+            const checkPos = {
+                x: Math.floor(pos.x + dir.vec.x),
+                y: Math.floor(pos.y),
+                z: Math.floor(pos.z + dir.vec.z)
+            };
             try {
-                const checkPos = {
-                    x: Math.floor(pos.x + dir.vec.x),
-                    y: Math.floor(pos.y),
-                    z: Math.floor(pos.z + dir.vec.z)
-                };
                 const block = overworld.getBlock(checkPos);
-                const heightDiff = this.calculateBlockHeight(block, pos) - pos.y;
+                const heightDiff = this.calculateAccurateBlockHeight(block, pos) - pos.y;
                 if (Math.abs(heightDiff) > 0.1) {
                     const distance = Math.sqrt(dir.vec.x ** 2 + dir.vec.z ** 2);
                     const angle = Math.atan(heightDiff / distance);
@@ -37,25 +36,22 @@ export class SlopeDetector {
                     }
                 }
             }
-            catch (error) {
-                // 블록 접근 실패 시 무시
+            catch (e) {
+                // 블록 접근 실패 무시
             }
         }
         return maxSlope;
     }
-    static calculateBlockHeight(block, entityPos) {
+    static calculateAccurateBlockHeight(block, entityPos) {
         if (!block?.typeId)
             return entityPos.y;
-        const baseY = block.location.y;
-        // 반블록 처리
+        const baseY = block.y;
         if (this.SLAB_BLOCKS.has(block.typeId)) {
             return baseY + 0.5;
         }
-        // 계단 처리
         if (this.STEP_BLOCKS.has(block.typeId)) {
             return baseY + 0.5;
         }
-        // 일반 블록
         return baseY + 1.0;
     }
     static normalizeVector(v) {

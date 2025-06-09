@@ -22,18 +22,20 @@ export class RigidBody {
             this.entity.applyImpulse(impulse);
         }
         catch (error) {
-            // 속도 설정 실패 시 무시
+            // 속도 설정 실패 무시
         }
     }
-    getLocation() {
-        return this.entity.location;
-    }
-    teleport(location) {
+    getDynamicProperty(property) {
         try {
-            this.entity.teleport(location, { dimension: this.entity.dimension });
+            const value = this.entity.getDynamicProperty(property);
+            // Vector3 타입 제외하고 반환
+            if (typeof value === 'object' && value !== null && 'x' in value) {
+                return undefined;
+            }
+            return value;
         }
         catch (error) {
-            // 텔레포트 실패 시 무시
+            return undefined;
         }
     }
     setDynamicProperty(property, value) {
@@ -41,21 +43,13 @@ export class RigidBody {
             this.entity.setDynamicProperty(property, value);
         }
         catch (error) {
-            // 프로퍼티 설정 실패 시 무시
+            // 프로퍼티 설정 실패 무시
         }
     }
-    getDynamicProperty(property) {
-        try {
-            return this.entity.getDynamicProperty(property);
-        }
-        catch (error) {
-            return undefined;
-        }
-    }
-    // isDead 속성 제거, isValid()만 사용
     isValid() {
         try {
-            return this.entity.isValid();
+            // Script API 2.0.0-beta에서 isValid는 속성입니다
+            return this.entity.isValid;
         }
         catch (error) {
             return false;
