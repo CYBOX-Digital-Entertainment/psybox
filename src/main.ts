@@ -1,16 +1,45 @@
-import { world, system, Vector3, Entity, Player, Dimension } from "@minecraft/server";
+import { 
+    world, 
+    system, 
+    Entity, 
+    Player, 
+    Vector3, 
+    Dimension,
+    EntityType
+} from "@minecraft/server";
 
+// 물리 상수 정의
+const PHYSICS_CONSTANTS = {
+    GRAVITY: -0.08,
+    AIR_RESISTANCE: 0.98,
+    GROUND_FRICTION: 0.9,
+    MIN_VELOCITY_THRESHOLD: 0.001,
+    MAX_VELOCITY: 10.0,
+    SLOPE_ANGLE_THRESHOLD: 5.0
+} as const;
+
+// 물리 데이터 인터페이스
+interface PhysicsData {
+    velx: number;
+    vely: number;
+    velz: number;
+    isgrounded: boolean;
+    issliding: boolean;
+    slopeangle: number;
+    slopestrength: number;
+    mass: number;
+    friction: number;
+}
+
+// Singleton 패턴으로 구현된 물리엔진 메인 클래스
 export class PsyboxPhysicsEngine {
     private static instance: PsyboxPhysicsEngine;
     private debugMode: boolean = false;
-    private physicsEntities: Set<Entity> = new Set();
-    private readonly GRAVITY_FORCE = -0.08;
-    private readonly FRICTION_GROUND = 0.7;
-    private readonly FRICTION_AIR = 0.98;
-    private readonly SLOPE_THRESHOLD = 0.3; // 경사각도 임계값 (약 17도)
+    private physicsEntities: Map<string, PhysicsData> = new Map();
+    private lastUpdateTime: number = Date.now();
 
     private constructor() {
-        this.initializePhysicsEngine();
+        this.initializeEventHandlers();
     }
 
     public static getInstance(): PsyboxPhysicsEngine {
@@ -20,315 +49,376 @@ export class PsyboxPhysicsEngine {
         return PsyboxPhysicsEngine.instance;
     }
 
-    private initializePhysicsEngine(): void {
-        console.warn("Psybox Physics Engine v2.1.2-beta 초기화 중...");
+    private initializeEventHandlers(): void {
+        try {
+            // Script API 2.0.0-beta에서 scriptEventReceive는 system.afterEvents로 이동
+            system.afterEvents.scriptEventReceive.subscribe((event) => {
+                this.handleScriptEvent(event.id, event.message, event.sourceEntity);
+            });
 
-        // Script Event 처리 - Script API 2.0.0-beta에서 system.afterEvents로 이동
-        system.afterEvents.scriptEventReceive.subscribe((event) => {
-            if (event.id.startsWith("psybox:")) {
-                this.handleScriptEvent(event.id, event.message || "", event.sourceEntity);
-            }
-        });
+            // 월드 로드 이벤트 (worldInitialize -> worldLoad로 변경)
+            world.afterEvents.worldLoad.subscribe(() => {
+                this.initializePhysicsSystem();
+            });
 
-        // 메인 물리 시뮬레이션 루프
-        this.startPhysicsLoop();
+            // 엔티티 스폰 이벤트
+            world.afterEvents.entitySpawn.subscribe((event) => {
+                this.initializeEntityPhysics(event.entity);
+            });
 
-        console.warn("Psybox Physics Engine 초기화 완료!");
-    }
+            // 게임 틱 이벤트
+            system.runInterval(() => {
+                this.updatePhysics();
+            }, 1);
 
-    private handleScriptEvent(eventId: string, message: string, entity?: Entity): void {
-        const command = eventId.replace("psybox:", "");
-
-        switch (command) {
-            case "debug_on":
-                this.debugMode = true;
-                if (entity instanceof Player) {
-                    entity.sendMessage("§a[Psybox] 디버그 모드 활성화");
-                }
-                break;
-
-            case "debug_off":
-                this.debugMode = false;
-                if (entity instanceof Player) {
-                    entity.sendMessage("§c[Psybox] 디버그 모드 비활성화");
-                }
-                break;
-
-            case "physics_info":
-                if (entity instanceof Player) {
-                    entity.sendMessage(`§e[Psybox] Physics Engine v2.1.2-beta`);
-                    entity.sendMessage(`§7- API: Script 2.0.0-beta.1.21.82-stable`);
-                    entity.sendMessage(`§7- 활성 엔티티: ${this.physicsEntities.size}개`);
-                }
-                break;
-
-            case "slope_test":
-                this.performSlopeTest(entity);
-                break;
+        } catch (error) {
+            console.error("§c[Psybox] 이벤트 핸들러 초기화 실패:", error);
         }
     }
 
-    private startPhysicsLoop(): void {
-        system.runInterval(() => {
-            this.updatePhysics();
-        }, 1); // 매 틱마다 실행
+    private initializePhysicsSystem(): void {
+        try {
+            const dimensions = [
+                world.getDimension("overworld"),
+                world.getDimension("nether"), 
+                world.getDimension("the_end")
+            ];
+
+            dimensions.forEach(dimension => {
+                // 차원별 중력 설정
+                const gravityMultiplier = this.getDimensionGravityMultiplier(dimension.id);
+                console.log(`§a[Psybox] ${dimension.id} 차원 물리엔진 초기화 (중력: ${gravityMultiplier}x)`);
+            });
+
+        } catch (error) {
+            console.error("§c[Psybox] 물리 시스템 초기화 실패:", error);
+        }
+    }
+
+    private getDimensionGravityMultiplier(dimensionId: string): number {
+        switch (dimensionId) {
+            case "nether": return 1.2;
+            case "the_end": return 0.6;
+            default: return 1.0;
+        }
+    }
+
+    private handleScriptEvent(id: string, message: string, sourceEntity?: Entity): void {
+        if (!id.startsWith("psybox:")) return;
+
+        const command = id.substring(7); // "psybox:" 제거
+
+        try {
+            switch (command) {
+                case "debug_on":
+                    this.debugMode = true;
+                    this.sendMessageToPlayer(sourceEntity, "§a[Psybox] 디버그 모드 활성화");
+                    break;
+
+                case "debug_off":
+                    this.debugMode = false;
+                    this.sendMessageToPlayer(sourceEntity, "§7[Psybox] 디버그 모드 비활성화");
+                    break;
+
+                case "slope_test":
+                    this.runSlopeTest(sourceEntity);
+                    break;
+
+                case "physics_info":
+                    this.showPhysicsInfo(sourceEntity);
+                    break;
+
+                case "vehicle_test":
+                    this.runVehicleTest(sourceEntity);
+                    break;
+
+                default:
+                    this.sendMessageToPlayer(sourceEntity, "§c[Psybox] 알 수 없는 명령어: " + command);
+            }
+        } catch (error) {
+            console.error(`§c[Psybox] 스크립트 이벤트 처리 실패 (${command}):`, error);
+        }
+    }
+
+    private sendMessageToPlayer(entity?: Entity, message: string): void {
+        if (entity && entity instanceof Player) {
+            entity.sendMessage(message);
+        } else {
+            // 플레이어가 아닌 경우 콘솔에 출력
+            console.log(message);
+        }
+    }
+
+    private runSlopeTest(sourceEntity?: Entity): void {
+        try {
+            this.sendMessageToPlayer(sourceEntity, "§a[Psybox] 경사면 테스트 시작...");
+            this.sendMessageToPlayer(sourceEntity, "§7계단이나 반블럭 경사면에 서보세요!");
+
+            if (sourceEntity?.dimension) {
+                const testLocation = {
+                    x: sourceEntity.location.x + 2,
+                    y: sourceEntity.location.y + 5,
+                    z: sourceEntity.location.z
+                };
+
+                // car:basic 엔티티 스폰 (타입 캐스팅으로 오류 해결)
+                const testEntity = sourceEntity.dimension.spawnEntity("car:basic" as EntityType, testLocation);
+
+                if (testEntity) {
+                    this.initializeEntityPhysics(testEntity);
+
+                    system.runTimeout(() => {
+                        this.sendMessageToPlayer(sourceEntity, "§e[Psybox] 테스트 완료!");
+                    }, 100);
+                }
+            }
+        } catch (error) {
+            console.error("§c[Psybox] 경사면 테스트 실패:", error);
+            this.sendMessageToPlayer(sourceEntity, "§c[Psybox] 테스트 실행 중 오류 발생");
+        }
+    }
+
+    private runVehicleTest(sourceEntity?: Entity): void {
+        try {
+            this.sendMessageToPlayer(sourceEntity, "§a[Psybox] 차량 물리 테스트 시작...");
+
+            if (sourceEntity?.dimension) {
+                const testLocation = {
+                    x: sourceEntity.location.x + 1,
+                    y: sourceEntity.location.y + 2,
+                    z: sourceEntity.location.z
+                };
+
+                const vehicleEntity = sourceEntity.dimension.spawnEntity("car:basic" as EntityType, testLocation);
+
+                if (vehicleEntity) {
+                    // 차량 전용 물리 프로퍼티 설정
+                    vehicleEntity.setDynamicProperty("physics:mass", 1500);
+                    vehicleEntity.setDynamicProperty("physics:friction", 0.8);
+                    vehicleEntity.setDynamicProperty("physics:tire_grip", 0.9);
+
+                    this.initializeEntityPhysics(vehicleEntity);
+                    this.sendMessageToPlayer(sourceEntity, "§e[Psybox] 차량 엔티티 생성 완료!");
+                }
+            }
+        } catch (error) {
+            console.error("§c[Psybox] 차량 테스트 실패:", error);
+        }
+    }
+
+    private showPhysicsInfo(sourceEntity?: Entity): void {
+        const entityCount = this.physicsEntities.size;
+        const currentTime = Date.now();
+        const deltaTime = currentTime - this.lastUpdateTime;
+
+        this.sendMessageToPlayer(sourceEntity, `§b[Psybox] 물리 엔티티: ${entityCount}개`);
+        this.sendMessageToPlayer(sourceEntity, `§b[Psybox] 업데이트 간격: ${deltaTime}ms`);
+        this.sendMessageToPlayer(sourceEntity, `§b[Psybox] 디버그 모드: ${this.debugMode ? "§a활성" : "§c비활성"}`);
+    }
+
+    private initializeEntityPhysics(entity: Entity): void {
+        try {
+            if (!entity.isValid) return;
+
+            const physicsData: PhysicsData = {
+                velx: 0,
+                vely: 0,
+                velz: 0,
+                isgrounded: false,
+                issliding: false,
+                slopeangle: 0,
+                slopestrength: 0,
+                mass: entity.getDynamicProperty("physics:mass") as number || 100,
+                friction: entity.getDynamicProperty("physics:friction") as number || 0.7
+            };
+
+            this.physicsEntities.set(entity.id, physicsData);
+
+        } catch (error) {
+            console.error("§c[Psybox] 엔티티 물리 초기화 실패:", error);
+        }
     }
 
     private updatePhysics(): void {
-        // 모든 차원에서 물리 대상 엔티티 검색
-        const dimensions = [
-            world.getDimension("overworld"),
-            world.getDimension("nether"), 
-            world.getDimension("the_end")
-        ];
+        const currentTime = Date.now();
+        const deltaTime = Math.min((currentTime - this.lastUpdateTime) / 1000, 0.05); // 최대 50ms
 
-        for (const dimension of dimensions) {
-            const entities = dimension.getEntities({
-                type: "cybox:spirra" // 사용자가 지정한 테스트 엔티티
+        const entitiesToRemove: string[] = []; // Set 대신 배열 사용
+
+        try {
+            for (const [entityId, physicsData] of this.physicsEntities) {
+                const entity = world.getEntity(entityId);
+
+                if (!entity || !entity.isValid) { // isValid() -> isValid 프로퍼티로 변경
+                    entitiesToRemove.push(entityId); // add() -> push() 메서드로 변경
+                    continue;
+                }
+
+                this.updateEntityPhysics(entity, physicsData, deltaTime);
+            }
+
+            // 제거할 엔티티들 처리
+            entitiesToRemove.forEach(entityId => {
+                this.physicsEntities.delete(entityId);
             });
 
-            for (const entity of entities) {
-                if (!entity.isValid) continue;
-                this.applyPhysics(entity, dimension);
-            }
+        } catch (error) {
+            console.error("§c[Psybox] 물리 업데이트 실패:", error);
         }
+
+        this.lastUpdateTime = currentTime;
     }
 
-    private applyPhysics(entity: Entity, dimension: Dimension): void {
+    private updateEntityPhysics(entity: Entity, physicsData: PhysicsData, deltaTime: number): void {
         try {
-            const entityLocation = entity.location;
+            // 현재 속도 가져오기
             const currentVelocity = entity.getVelocity();
 
-            // MACHINE_BUILDER 스타일의 raycast 경사면 검출
-            const slopeData = this.detectSlope(entity, dimension);
-
-            // 물리 프로퍼티 업데이트
-            this.updatePhysicsProperties(entity, slopeData, currentVelocity);
-
-            // 중력 및 경사면 물리 적용
-            if (slopeData.isOnSlope) {
-                this.applySlopePhysics(entity, slopeData);
-            } else {
-                this.applyGravity(entity);
-            }
-
-            // 마찰 적용
-            this.applyFriction(entity, slopeData.isGrounded);
-
-            // 디버그 HUD 표시
-            if (this.debugMode) {
-                this.showDebugHUD(entity, slopeData, currentVelocity);
-            }
-
-        } catch (error) {
-            console.warn(`[Psybox] 물리 적용 오류: ${error}`);
-        }
-    }
-
-    private detectSlope(entity: Entity, dimension: Dimension): SlopeData {
-        const entityLocation = entity.location;
-        const entityRotation = entity.getRotation();
-
-        // MACHINE_BUILDER 방식: 전방과 후방 두 점에서 raycast
-        const frontOffset = 1.0;
-        const frontLocation: Vector3 = {
-            x: entityLocation.x + Math.sin(entityRotation.y * Math.PI / 180) * frontOffset,
-            y: entityLocation.y + 1,
-            z: entityLocation.z + Math.cos(entityRotation.y * Math.PI / 180) * frontOffset
-        };
-
-        const backLocation: Vector3 = {
-            x: entityLocation.x - Math.sin(entityRotation.y * Math.PI / 180) * frontOffset,
-            y: entityLocation.y + 1,
-            z: entityLocation.z - Math.cos(entityRotation.y * Math.PI / 180) * frontOffset
-        };
-
-        // 전방 raycast (아래쪽으로)
-        const frontRaycast = dimension.getBlockFromRay(frontLocation, { x: 0, y: -3, z: 0 });
-        const backRaycast = dimension.getBlockFromRay(backLocation, { x: 0, y: -3, z: 0 });
-
-        // 지면 검출 (엔티티 바로 아래)
-        const groundRaycast = dimension.getBlockFromRay(
-            { x: entityLocation.x, y: entityLocation.y + 0.5, z: entityLocation.z },
-            { x: 0, y: -2, z: 0 }
-        );
-
-        const isGrounded = groundRaycast !== undefined && 
-                          (entityLocation.y - groundRaycast.block.location.y) <= 1.2;
-
-        let slopeAngle = 0;
-        let isOnSlope = false;
-        let slopeDirection: Vector3 = { x: 0, y: 0, z: 0 };
-
-        if (frontRaycast && backRaycast && isGrounded) {
-            const frontY = frontRaycast.block.location.y;
-            const backY = backRaycast.block.location.y;
-            const heightDiff = frontY - backY;
-
-            // 경사각도 계산
-            slopeAngle = Math.atan2(Math.abs(heightDiff), frontOffset * 2) * (180 / Math.PI);
-            isOnSlope = slopeAngle > 5 && slopeAngle < 60; // 5도~60도 범위에서 경사면으로 인식
-
-            if (isOnSlope) {
-                // 경사 방향 계산 (아래쪽으로)
-                const slopeStrength = Math.sin(slopeAngle * Math.PI / 180) * 0.15;
-
-                if (heightDiff > 0) { // 전방이 높으면 뒤로 미끄러짐
-                    slopeDirection = {
-                        x: -Math.sin(entityRotation.y * Math.PI / 180) * slopeStrength,
-                        y: -0.02,
-                        z: -Math.cos(entityRotation.y * Math.PI / 180) * slopeStrength
-                    };
-                } else { // 후방이 높으면 앞으로 미끄러짐
-                    slopeDirection = {
-                        x: Math.sin(entityRotation.y * Math.PI / 180) * slopeStrength,
-                        y: -0.02,
-                        z: Math.cos(entityRotation.y * Math.PI / 180) * slopeStrength
-                    };
-                }
-            }
-        }
-
-        return {
-            isGrounded,
-            isOnSlope,
-            slopeAngle,
-            slopeDirection,
-            slopeStrength: Math.sin(slopeAngle * Math.PI / 180)
-        };
-    }
-
-    private applySlopePhysics(entity: Entity, slopeData: SlopeData): void {
-        try {
-            // applyImpulse로 경사면 미끄러짐 효과 적용
-            const impulse: Vector3 = {
-                x: slopeData.slopeDirection.x * 0.8,
-                y: slopeData.slopeDirection.y * 0.5,
-                z: slopeData.slopeDirection.z * 0.8
-            };
-
-            entity.applyImpulse(impulse);
-
-        } catch (error) {
-            console.warn(`[Psybox] 경사면 물리 적용 실패: ${error}`);
-        }
-    }
-
-    private applyGravity(entity: Entity): void {
-        try {
-            const gravityImpulse: Vector3 = {
-                x: 0,
-                y: this.GRAVITY_FORCE,
-                z: 0
-            };
-
-            entity.applyImpulse(gravityImpulse);
-
-        } catch (error) {
-            console.warn(`[Psybox] 중력 적용 실패: ${error}`);
-        }
-    }
-
-    private applyFriction(entity: Entity, isGrounded: boolean): void {
-        try {
-            const currentVelocity = entity.getVelocity();
-            const frictionForce = isGrounded ? this.FRICTION_GROUND : this.FRICTION_AIR;
-
-            // 수평 속도에만 마찰 적용
-            const frictionImpulse: Vector3 = {
-                x: -currentVelocity.x * (1 - frictionForce) * 0.1,
-                y: 0,
-                z: -currentVelocity.z * (1 - frictionForce) * 0.1
-            };
-
-            entity.applyImpulse(frictionImpulse);
-
-        } catch (error) {
-            console.warn(`[Psybox] 마찰 적용 실패: ${error}`);
-        }
-    }
-
-    private updatePhysicsProperties(entity: Entity, slopeData: SlopeData, velocity: Vector3): void {
-        try {
-            // 동적 프로퍼티로 물리 상태 저장
-            entity.setDynamicProperty("psybox:velx", Math.round(velocity.x * 100) / 100);
-            entity.setDynamicProperty("psybox:vely", Math.round(velocity.y * 100) / 100);
-            entity.setDynamicProperty("psybox:velz", Math.round(velocity.z * 100) / 100);
-            entity.setDynamicProperty("psybox:isgrounded", slopeData.isGrounded);
-            entity.setDynamicProperty("psybox:issliding", slopeData.isOnSlope);
-            entity.setDynamicProperty("psybox:slopeangle", Math.round(slopeData.slopeAngle * 10) / 10);
-            entity.setDynamicProperty("psybox:slopestrength", Math.round(slopeData.slopeStrength * 100) / 100);
-            entity.setDynamicProperty("psybox:mass", 1.0);
-            entity.setDynamicProperty("psybox:friction", slopeData.isGrounded ? this.FRICTION_GROUND : this.FRICTION_AIR);
-
-        } catch (error) {
-            console.warn(`[Psybox] 프로퍼티 업데이트 실패: ${error}`);
-        }
-    }
-
-    private showDebugHUD(entity: Entity, slopeData: SlopeData, velocity: Vector3): void {
-        try {
-            const location = entity.location;
-            const debugText = [
-                `§e=== Psybox Physics Debug ===`,
-                `§7위치: ${Math.round(location.x * 10) / 10}, ${Math.round(location.y * 10) / 10}, ${Math.round(location.z * 10) / 10}`,
-                `§7속도: X=${Math.round(velocity.x * 100) / 100} Y=${Math.round(velocity.y * 100) / 100} Z=${Math.round(velocity.z * 100) / 100}`,
-                `§7지면 접촉: ${slopeData.isGrounded ? "§a예" : "§c아니오"}`,
-                `§7경사면 상태: ${slopeData.isOnSlope ? "§6미끄러짐" : "§a평지"}`,
-                `§7경사각도: ${Math.round(slopeData.slopeAngle * 10) / 10}°`,
-                `§7경사력: ${Math.round(slopeData.slopeStrength * 100) / 100}`
-            ];
-
-            entity.runCommand(`title @s actionbar ${debugText.join("\n")}`);
-
-        } catch (error) {
-            console.warn(`[Psybox] 디버그 HUD 표시 실패: ${error}`);
-        }
-    }
-
-    private performSlopeTest(entity?: Entity): void {
-        if (!entity) return;
-
-        try {
-            entity.sendMessage("§a[Psybox] 경사면 테스트 시작...");
-            entity.sendMessage("§7계단이나 반블럭 경사면에 서보세요!");
-
-            // 테스트 엔티티 소환
+            // 중력 적용
             const dimension = entity.dimension;
-            const location = entity.location;
+            const gravityMultiplier = this.getDimensionGravityMultiplier(dimension.id);
+            physicsData.vely += PHYSICS_CONSTANTS.GRAVITY * gravityMultiplier * deltaTime;
 
-            const testLocation: Vector3 = {
-                x: location.x + 2,
-                y: location.y + 2,
-                z: location.z
+            // 지면 검출
+            physicsData.isgrounded = this.checkGroundContact(entity);
+
+            // 경사면 검출 및 미끄러짐 처리
+            if (physicsData.isgrounded) {
+                const slopeInfo = this.detectSlope(entity);
+                physicsData.slopeangle = slopeInfo.angle;
+                physicsData.slopestrength = slopeInfo.strength;
+                physicsData.issliding = slopeInfo.angle > PHYSICS_CONSTANTS.SLOPE_ANGLE_THRESHOLD;
+
+                if (physicsData.issliding) {
+                    this.applySlopePhysics(entity, physicsData, slopeInfo);
+                }
+
+                // 지면 마찰 적용
+                physicsData.velx *= PHYSICS_CONSTANTS.GROUND_FRICTION;
+                physicsData.velz *= PHYSICS_CONSTANTS.GROUND_FRICTION;
+                physicsData.vely = Math.max(physicsData.vely, 0); // 지면에서 y속도 제한
+            } else {
+                // 공중에서 공기 저항 적용
+                physicsData.velx *= PHYSICS_CONSTANTS.AIR_RESISTANCE;
+                physicsData.velz *= PHYSICS_CONSTANTS.AIR_RESISTANCE;
+            }
+
+            // 속도 임펄스 적용 (setVelocity 대신 applyImpulse 사용)
+            const velocityDelta = {
+                x: physicsData.velx - currentVelocity.x,
+                y: physicsData.vely - currentVelocity.y,
+                z: physicsData.velz - currentVelocity.z
             };
 
-            const testEntity = dimension.spawnEntity("cybox:spirra", testLocation);
+            // 속도 차이가 있을 때만 impulse 적용
+            if (Math.abs(velocityDelta.x) > PHYSICS_CONSTANTS.MIN_VELOCITY_THRESHOLD ||
+                Math.abs(velocityDelta.y) > PHYSICS_CONSTANTS.MIN_VELOCITY_THRESHOLD ||
+                Math.abs(velocityDelta.z) > PHYSICS_CONSTANTS.MIN_VELOCITY_THRESHOLD) {
 
-            // 3초 후 자동 제거
-            system.runTimeout(() => {
-                if (testEntity && testEntity.isValid) {
-                    testEntity.kill();
-                    entity.sendMessage("§e[Psybox] 테스트 완료!");
-                }
-            }, 60); // 3초 = 60틱
+                entity.applyImpulse({
+                    x: velocityDelta.x * physicsData.mass * 0.1,
+                    y: velocityDelta.y * physicsData.mass * 0.1,
+                    z: velocityDelta.z * physicsData.mass * 0.1
+                });
+            }
+
+            // 디버그 HUD 업데이트
+            if (this.debugMode) {
+                this.updateDebugHUD(entity, physicsData);
+            }
 
         } catch (error) {
-            console.warn(`[Psybox] 경사면 테스트 실패: ${error}`);
-            if (entity instanceof Player) {
-                entity.sendMessage("§c[Psybox] 테스트 실패: cybox:spirra 엔티티를 찾을 수 없습니다.");
+            console.error("§c[Psybox] 엔티티 물리 업데이트 실패:", error);
+        }
+    }
+
+    private checkGroundContact(entity: Entity): boolean {
+        try {
+            const belowLocation = {
+                x: entity.location.x,
+                y: entity.location.y - 0.1,
+                z: entity.location.z
+            };
+
+            const block = entity.dimension.getBlock(belowLocation);
+            return block !== undefined && !block.isAir;
+        } catch {
+            return false;
+        }
+    }
+
+    private detectSlope(entity: Entity): { angle: number; strength: number } {
+        try {
+            // 간단한 경사면 검출 (전방과 현재 위치의 높이 차이로 계산)
+            const frontLocation = {
+                x: entity.location.x + entity.getViewDirection().x,
+                y: entity.location.y,
+                z: entity.location.z + entity.getViewDirection().z
+            };
+
+            const currentBlock = entity.dimension.getBlock(entity.location);
+            const frontBlock = entity.dimension.getBlock(frontLocation);
+
+            if (currentBlock && frontBlock) {
+                const heightDiff = frontBlock.location.y - currentBlock.location.y;
+                const angle = Math.abs(Math.atan(heightDiff) * 180 / Math.PI);
+                const strength = Math.min(angle / 45.0, 1.0);
+
+                return { angle, strength };
             }
+        } catch (error) {
+            console.error("§c[Psybox] 경사면 검출 실패:", error);
+        }
+
+        return { angle: 0, strength: 0 };
+    }
+
+    private applySlopePhysics(entity: Entity, physicsData: PhysicsData, slopeInfo: { angle: number; strength: number }): void {
+        try {
+            // 경사면에서 미끄러짐 효과
+            const slideForce = slopeInfo.strength * 0.1;
+            const viewDirection = entity.getViewDirection();
+
+            physicsData.velx += viewDirection.x * slideForce;
+            physicsData.velz += viewDirection.z * slideForce;
+
+            // 최대 속도 제한
+            const totalSpeed = Math.sqrt(physicsData.velx ** 2 + physicsData.velz ** 2);
+            if (totalSpeed > PHYSICS_CONSTANTS.MAX_VELOCITY) {
+                const scale = PHYSICS_CONSTANTS.MAX_VELOCITY / totalSpeed;
+                physicsData.velx *= scale;
+                physicsData.velz *= scale;
+            }
+
+        } catch (error) {
+            console.error("§c[Psybox] 경사면 물리 적용 실패:", error);
+        }
+    }
+
+    private updateDebugHUD(entity: Entity, physicsData: PhysicsData): void {
+        try {
+            const nearbyPlayers = entity.dimension.getPlayers({
+                location: entity.location,
+                maxDistance: 10
+            });
+
+            nearbyPlayers.forEach(player => {
+                const debugText = [
+                    `§7위치: §f${entity.location.x.toFixed(1)}, ${entity.location.y.toFixed(1)}, ${entity.location.z.toFixed(1)}`,
+                    `§7속도: §f${physicsData.velx.toFixed(2)}, ${physicsData.vely.toFixed(2)}, ${physicsData.velz.toFixed(2)}`,
+                    `§7지면: §f${physicsData.isgrounded ? "§a접촉" : "§c공중"}`,
+                    `§7경사: §f${physicsData.issliding ? "§e미끄러짐" : "§7평지"} (${physicsData.slopeangle.toFixed(1)}°)`,
+                    `§7질량: §f${physicsData.mass}kg §7마찰: §f${physicsData.friction}`
+                ].join("\n");
+
+                player.onScreenDisplay.setActionBar(debugText);
+            });
+
+        } catch (error) {
+            console.error("§c[Psybox] 디버그 HUD 업데이트 실패:", error);
         }
     }
 }
 
-interface SlopeData {
-    isGrounded: boolean;
-    isOnSlope: boolean;
-    slopeAngle: number;
-    slopeDirection: Vector3;
-    slopeStrength: number;
-}
-
-// 물리엔진 인스턴스 생성 및 시작
+// 물리엔진 인스턴스 생성
 const physicsEngine = PsyboxPhysicsEngine.getInstance();

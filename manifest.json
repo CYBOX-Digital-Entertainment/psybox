@@ -1,33 +1,45 @@
 {
   "format_version": 2,
   "header": {
+    "description": "Psybox Physics Engine v2.1.3-beta - 마인크래프트 베드락용 고급 물리 시뮬레이션",
     "name": "Psybox Physics Engine",
-    "description": "Advanced physics simulation for terrain-conforming entities with slope detection",
-    "uuid": "a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d",
-    "version": [2, 1, 2],
-    "min_engine_version": [1, 21, 70]
+    "uuid": "c7fe7cce-cc7e-4d00-8a70-8b9cc025adf8",
+    "version": [
+      2,
+      1,
+      3
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      70
+    ]
   },
   "modules": [
     {
+      "description": "Psybox Physics Engine Scripts",
       "type": "script",
       "language": "javascript",
-      "uuid": "b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e",
-      "version": [2, 1, 2],
+      "uuid": "b4d7c6e5-4c02-4b56-b0e1-8b84c6d6b5c7",
+      "version": [
+        2,
+        1,
+        3
+      ],
       "entry": "scripts/main.js"
     }
   ],
   "dependencies": [
     {
       "module_name": "@minecraft/server",
-      "version": "2.0.0-beta"
+      "version": "2.0.0-beta.1.21.82-stable"
     },
     {
       "module_name": "@minecraft/server-gametest",
-      "version": "1.0.0-beta"
+      "version": "1.0.0-beta.1.21.70-stable"
     }
   ],
   "capabilities": [
-    "script_eval",
-    "raycast"
+    "script_eval"
   ]
 }

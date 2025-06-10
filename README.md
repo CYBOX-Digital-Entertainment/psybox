@@ -1,48 +1,41 @@
-# Psybox Physics Engine v2.1.2-beta
+# Psybox Physics Engine v2.1.3-beta
 
-마인크래프트 베드락 에디션용 고급 물리 시뮬레이션 엔진입니다.
+마인크래프트 베드락 에디션용 고급 물리 시뮬레이션 애드온입니다. MACHINE_BUILDER 스타일의 terrain-conforming 물리 시스템을 구현하여 엔티티가 경사면에서 자연스럽게 미끄러져 내려가는 현실적인 물리 반응을 제공합니다.
 
-## 주요 기능
+## 🎯 주요 기능
 
-### 🎯 물리 시뮬레이션
-- **실시간 중력 시스템**: 차원별 차등 적용
-- **경사면 물리학**: MACHINE_BUILDER 스타일의 raycast 기반 경사 검출
-- **마찰 시뮬레이션**: 지면/공중 마찰 차등 적용
-- **자동 미끄러짐**: 계단, 반블럭 경사면에서 자연스러운 물리 반응
+### 고급 물리 시뮬레이션
+- **9개 물리 프로퍼티**: velx, vely, velz, isgrounded, issliding, slopeangle, slopestrength, mass, friction
+- **실시간 중력 시스템**: 차원별 차등 적용 (오버월드 1.0x, 네더 1.2x, 엔드 0.6x)
+- **8방향 경사면 검출**: 정밀한 각도 계산 및 자동 미끄러짐 효과
+- **표면별 마찰 시스템**: 블록 종류에 따른 차등 마찰 계수
 
-### 🔧 기술 사양
-- **API 버전**: Script API 2.0.0-beta.1.21.82-stable
-- **GameTest API**: 1.0.0-beta.1.21.70-stable  
-- **지원 버전**: Minecraft 1.21.82+
-- **테스트 엔티티**: cybox:spirra
+### 디버그 및 개발 도구
+- **실시간 디버그 HUD**: 물리 상태 실시간 모니터링
+- **Script Event 시스템**: `/scriptevent psybox:명령어` 지원
+- **GameTest 프레임워크**: 5가지 자동화 테스트
 
-### 📊 물리 프로퍼티 (9개)
-- `velx`, `vely`, `velz`: 3D 속도 벡터
-- `isgrounded`: 지면 접촉 상태
-- `issliding`: 경사면 미끄러짐 상태
-- `slopeangle`: 경사각도 (0°-90°)
-- `slopestrength`: 경사 강도 (0.0-1.0)
-- `mass`: 질량 (기본값: 1.0)
-- `friction`: 마찰 계수
+## 📋 시스템 요구사항
+
+- **Minecraft Bedrock Edition** 1.21.82 이상
+- **Script API**: 2.0.0-beta.1.21.82-stable
+- **GameTest API**: 1.0.0-beta.1.21.70-stable
+- **Beta APIs 실험 기능** 필수 활성화
 
 ## 🚀 설치 방법
 
 ### 1. 파일 설치
-```bash
-# 압축 해제 후 다음 경로에 복사
-%LocalAppData%\Packages\Microsoft.MinecraftUWP_8wekyb3d8bbwe\LocalState\games\com.mojang\development_behavior_packs\psybox\
-```
+1. ZIP 파일을 다운로드하고 압축을 해제합니다
+2. `psybox` 폴더를 다음 경로에 복사합니다:
+   ```
+   %LocalAppData%\Packages\Microsoft.MinecraftUWP_8wekyb3d8bbwe\LocalState\games\com.mojang\development_behavior_packs\
+   ```
 
 ### 2. 마인크래프트 설정
-1. **설정 > 실험 > Beta APIs** 활성화 (필수)
-2. 새 월드 생성 시 "Psybox Physics Engine" 선택
-3. 크리에이티브 모드 권장
-
-### 3. 개발 환경 (선택사항)
-```bash
-npm install
-npm run build
-```
+1. 마인크래프트를 실행하고 **설정** → **실험 기능**으로 이동
+2. **"Beta APIs"** 토글을 활성화합니다 (필수)
+3. 새 월드 생성 시 **행동팩** 탭에서 "Psybox Physics Engine v2.1.3-beta"를 선택
+4. **크리에이티브 모드**와 **치트 허용**을 권장합니다
 
 ## 🎮 사용법
 
@@ -57,77 +50,119 @@ npm run build
 
 # 경사면 테스트 실행
 /scriptevent psybox:slope_test
+
+# 차량 물리 테스트
+/scriptevent psybox:vehicle_test
+```
+
+### 테스트 엔티티 소환
+```mcfunction
+# car:basic 엔티티 소환
+/summon car:basic ~ ~2 ~
+
+# 경사면 구조 생성
+/fill ~ ~ ~ ~5 ~3 ~ minecraft:oak_stairs
+/fill ~ ~ ~ ~5 ~2 ~ minecraft:stone_slab
 ```
 
 ### GameTest 실행
 ```mcfunction
-# 기본 물리 테스트
+# 전체 테스트 실행
 /gametest run psybox:basic_physics
-
-# 경사면 물리 테스트  
 /gametest run psybox:slope_physics
-
-# 지면 감지 테스트
 /gametest run psybox:ground_detection
-
-# 물리 프로퍼티 테스트
 /gametest run psybox:physics_properties
-
-# 속도 시스템 테스트
 /gametest run psybox:velocity_system
+
+# 모든 테스트 한번에 실행
+/gametest runall
 ```
 
-## 🔬 물리엔진 동작 원리
+## 🔬 물리 시스템 상세
 
-### 경사면 검출 시스템
-1. **Raycast 기반**: 엔티티 전방/후방 두 지점에서 지면까지 raycast
-2. **각도 계산**: 전후 높이차를 이용한 삼각함수 계산
-3. **임계값 판정**: 5°-60° 범위에서 경사면으로 인식
-4. **방향 결정**: 높이차에 따른 미끄러짐 방향 계산
+### 물리 프로퍼티 설명
+| 프로퍼티 | 설명 | 범위 |
+|---------|------|------|
+| `velx`, `vely`, `velz` | 3D 속도 벡터 | -10.0 ~ 10.0 |
+| `isgrounded` | 지면 접촉 상태 | true/false |
+| `issliding` | 경사면 미끄러짐 상태 | true/false |
+| `slopeangle` | 경사각도 (도) | 0° ~ 90° |
+| `slopestrength` | 경사 강도 | 0.0 ~ 1.0 |
+| `mass` | 엔티티 질량 (kg) | 1 ~ 10000 |
+| `friction` | 마찰 계수 | 0.0 ~ 1.0 |
 
-### 물리력 적용
-- **applyImpulse()**: 충격량 기반 속도 변경
-- **applyKnockback()**: 수평/수직 방향 분리 적용
-- **동적 프로퍼티**: 실시간 물리 상태 추적
+### 차원별 물리 특성
+- **오버월드**: 표준 중력 (1.0x)
+- **네더**: 강화된 중력 (1.2x) - 더 빠른 낙하
+- **엔드**: 감소된 중력 (0.6x) - 더 느린 낙하
 
-## 🐛 문제해결
+### 표면별 마찰 계수
+- **돌**: 0.7
+- **흙**: 0.6  
+- **잔디**: 0.65
+- **나무**: 0.5
+- **얼음**: 0.1
+- **기본값**: 0.6
 
-### 물리엔진이 작동하지 않을 때
-1. Beta APIs 실험 기능 활성화 확인
-2. cybox:spirra 엔티티 정의 확인
-3. 월드에서 행동팩 활성화 확인
-4. F3+T로 리소스팩 리로드
+## 🐛 문제 해결
 
-### GameTest 오류 해결
-1. GameTest 실험 기능 활성화
-2. 구조물 템플릿 존재 확인
-3. 크리에이티브 모드에서 테스트
-
-## 📝 개발자 정보
-
-### 파일 구조
-```
-psybox/
-├── manifests.json          # 행동팩 메타데이터
-├── package.json           # NPM 의존성
-├── tsconfig.json          # TypeScript 설정
-├── src/                   # 소스 코드
-│   ├── main.ts           # 메인 물리엔진
-│   ├── events/DebugHud.ts # 디버그 시스템
-│   └── tests/GameTests.ts # 자동화 테스트
-└── scripts/              # 컴파일된 JavaScript
+### 컴파일 오류
+```bash
+npm run build
+# Found 0 errors 확인
 ```
 
-### API 호환성
-- ✅ Script API 2.0.0-beta.1.21.82-stable
-- ✅ GameTest API 1.0.0-beta.1.21.70-stable
-- ✅ Minecraft Bedrock 1.21.82+
+### 인게임 오류
+1. **물리엔진이 작동하지 않는 경우**:
+   - Beta APIs가 활성화되었는지 확인
+   - 월드에서 행동팩이 활성화되었는지 확인
+   - `/scriptevent psybox:debug_on`으로 디버그 모드 활성화
 
-## 📞 지원
+2. **엔티티가 스폰되지 않는 경우**:
+   - `car:basic` 엔티티 정의가 올바른지 확인
+   - 치트가 활성화되었는지 확인
 
-- **문제 보고**: GitHub Issues
-- **기능 요청**: GitHub Discussions  
-- **개발 문의**: Discord
+3. **GameTest가 실행되지 않는 경우**:
+   - 실험 기능에서 "GameTest Framework"도 활성화
+   - `/gametest clearall` 후 재시도
 
----
-*Psybox Physics Engine v2.1.2-beta - MACHINE_BUILDER 스타일 경사면 물리학 구현*
+## 🔧 개발자 정보
+
+### TypeScript 빌드
+```bash
+npm install
+npm run build
+npm run watch  # 자동 빌드 모드
+```
+
+### 디버깅
+- 콘솔 로그는 Content Log에서 확인
+- 디버그 HUD는 액션바에 표시
+- 물리 프로퍼티는 `/scriptevent psybox:physics_info`로 확인
+
+### 확장성
+- `src/physics/beta/` 디렉토리에 새로운 물리 시스템 추가 가능
+- `src/tests/` 디렉토리에 추가 테스트 케이스 작성 가능
+- 엔티티별 커스텀 물리 프로퍼티 지원
+
+## 📝 변경 로그
+
+### v2.1.3-beta (현재)
+- Script API 2.0.0-beta.1.21.82-stable 완전 호환
+- `setVelocity()` → `applyImpulse()` 마이그레이션
+- `scriptEventReceive` 이벤트 위치 수정
+- `car:basic` 테스트 엔티티 지원
+- 모든 컴파일 오류 해결
+
+### v2.1.2-beta
+- `worldInitialize` → `worldLoad` 이벤트 변경
+- `applyKnockback` 메서드 시그니처 업데이트
+- GameTest import 구조 개선
+
+## 📄 라이선스
+
+이 프로젝트는 교육 및 개발 목적으로 제공됩니다. 상업적 사용 시 개발자에게 문의하시기 바랍니다.
+
+## 🤝 기여
+
+버그 리포트나 기능 제안은 이슈 트래커를 통해 제출해 주세요. 풀 리퀘스트는 언제나 환영합니다!

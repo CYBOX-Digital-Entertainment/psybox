@@ -1,25 +1,18 @@
 import { execSync } from 'child_process';
-import { copyFileSync, mkdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { dirname, join } from 'path';
 
-console.log('Building Psybox Physics Engine...');
+console.log('🔨 Psybox Physics Engine 빌드 시작...');
 
 try {
     // TypeScript 컴파일
+    console.log('📦 TypeScript 컴파일 중...');
     execSync('tsc', { stdio: 'inherit' });
 
-    // scripts 폴더가 없으면 생성
-    if (!existsSync('scripts')) {
-        mkdirSync('scripts', { recursive: true });
-    }
+    console.log('✅ 빌드 완료!');
+    console.log('📁 컴파일된 파일은 scripts/ 폴더에 있습니다.');
 
-    // main.js를 scripts 폴더로 복사
-    if (existsSync('src/main.js')) {
-        copyFileSync('src/main.js', 'scripts/main.js');
-        console.log('✅ main.js copied to scripts folder');
-    }
-
-    console.log('✅ Build completed successfully!');
 } catch (error) {
-    console.error('❌ Build failed:', error.message);
+    console.error('❌ 빌드 실패:', error.message);
     process.exit(1);
 }
