@@ -1,24 +1,7 @@
-# Node modules
 node_modules/
-npm-debug.log*
-
-# TypeScript
-*.tsbuildinfo
-
-# Compiled JavaScript (generated files)
 scripts/
-
-# IDE files
+*.js
+*.js.map
 .vscode/
-.idea/
-
-# OS files
 .DS_Store
 Thumbs.db
-
-# Build artifacts
-dist/
-build/
-
-# Logs
-*.log

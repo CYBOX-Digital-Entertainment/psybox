@@ -1,215 +1,136 @@
-import { 
+
+import {
     register,
     Test
 } from "@minecraft/server-gametest";
-import { Entity, EntityType } from "@minecraft/server";
+import { Entity, world } from "@minecraft/server";
+import { PsyboxPhysicsEngine } from "../main";
 
-// Factory 패턴으로 구현된 물리학 게임 테스트
-export class PhysicsGameTests {
-    private static testResults: Map<string, boolean> = new Map();
+/**
+ * Register and implement physics tests
+ */
+register("psybox", "basic_physics", (test: Test) => {
+    // Test setup
+    const testEntity = test.spawn("car:basic", { x: 2, y: 2, z: 2 });    
 
-    // 기본 물리 테스트
-    public static basicPhysicsTest(test: Test): void {
-        try {
-            const testEntity = test.spawn("car:basic" as EntityType, { x: 2, y: 2, z: 2 });
+    // Test that entity has been created
+    test.assert(testEntity !== undefined, "Entity should be spawned");
 
-            if (!testEntity) {
-                test.fail("테스트 엔티티 스폰 실패");
-                return;
-            }
+    // Set physics properties
+    testEntity.setDynamicProperty("physics:mass", 100);
+    testEntity.setDynamicProperty("physics:friction", 0.5);
 
-            // 물리 프로퍼티 설정
-            testEntity.setDynamicProperty("physics:mass", 100);
-            testEntity.setDynamicProperty("physics:friction", 0.7);
-            testEntity.setDynamicProperty("physics:velx", 0);
-            testEntity.setDynamicProperty("physics:vely", 0);
-            testEntity.setDynamicProperty("physics:velz", 0);
+    // Test that gravity is applied
+    test.runAfterDelay(20, () => {
+        const velocity = testEntity.getVelocity();
+        // Expect entity to be falling
+        test.assert(velocity.y < 0, "Entity should be falling");
 
-            // 중력 테스트를 위해 공중에 배치
-            const velocity = testEntity.getVelocity(); // 사용되지 않는 변수 제거
+        // Test complete
+        test.succeed();
+    });
+}).maxTicks(100);
 
-            test.succeedWhen(() => {
-                // assertEntityPresent 메서드 시그니처 수정 (boolean 대신 number)
-                test.assertEntityPresent("car:basic", { x: 2, y: 2, z: 2 }, 1);
-
-                // 물리 프로퍼티 검증
-                const mass = testEntity.getDynamicProperty("physics:mass");
-                test.assert(mass === 100, "질량이 올바르게 설정되지 않음");
-
-                const friction = testEntity.getDynamicProperty("physics:friction");
-                test.assert(friction === 0.7, "마찰 계수가 올바르게 설정되지 않음");
-            });
-
-        } catch (error) {
-            test.fail(`기본 물리 테스트 실패: ${error}`);
-        }
+register("psybox", "slope_physics", (test: Test) => {
+    // Create a slope (stairs)
+    const stairs = "minecraft:oak_stairs";
+    for (let i = 0; i < 3; i++) {
+        test.setBlockType(stairs, { x: i, y: 1, z: 0 });
     }
 
-    // 경사면 물리 테스트
-    public static slopePhysicsTest(test: Test): void {
-        try {
-            // 경사면 구조 생성 (올바른 블록 이름 사용)
-            const slabLocation = { x: 1, y: 1, z: 1 };
-            test.setBlockType("minecraft:stone_slab", slabLocation);
+    // Spawn test entity on top of stairs
+    const testEntity = test.spawn("car:basic", { x: 1, y: 3, z: 1 });    
 
-            // 테스트 엔티티 스폰
-            const testEntity = test.spawn("car:basic" as EntityType, { x: 1, y: 3, z: 1 });
+    // Test that entity moves down the slope
+    test.runAfterDelay(40, () => {
+        const position = testEntity.location;
 
-            if (!testEntity) {
-                test.fail("경사면 테스트 엔티티 스폰 실패");
-                return;
-            }
+        // Entity should have moved down the slope
+        test.assert(
+            position.y < 3 || position.x !== 1 || position.z !== 1,
+            "Entity should move down the slope"
+        );
 
-            // 경사면 물리 프로퍼티 설정
-            testEntity.setDynamicProperty("physics:isgrounded", false);
-            testEntity.setDynamicProperty("physics:issliding", false);
-            testEntity.setDynamicProperty("physics:slopeangle", 0);
+        test.succeed();
+    });
+}).maxTicks(100);
 
-            test.succeedWhen(() => {
-                const isGrounded = testEntity.getDynamicProperty("physics:isgrounded");
-                const slopeAngle = testEntity.getDynamicProperty("physics:slopeangle");
+register("psybox", "gravity_test", (test: Test) => {
+    // Spawn entity high in the air
+    const testEntity = test.spawn("car:basic", { x: 2, y: 3, z: 2 });    
 
-                // 지면에 착지했는지 확인
-                test.assert(isGrounded === true, "엔티티가 지면에 착지하지 않음");
+    // Wait a moment
+    test.runAfterDelay(10, () => {
+        // Get initial velocity
+        const velocity1 = testEntity.getVelocity();
 
-                // 경사각이 감지되었는지 확인
-                test.assert(typeof slopeAngle === "number" && slopeAngle >= 0, "경사각이 올바르게 계산되지 않음");
-            });
+        // Wait a bit longer
+        test.runAfterDelay(10, () => {
+            // Get updated velocity
+            const velocity2 = testEntity.getVelocity();
 
-        } catch (error) {
-            test.fail(`경사면 물리 테스트 실패: ${error}`);
-        }
-    }
+            // Verify gravity is increasing downward velocity
+            test.assert(
+                velocity2.y < velocity1.y,
+                "Gravity should increase downward velocity"
+            );
 
-    // 지면 감지 테스트
-    public static groundDetectionTest(test: Test): void {
-        try {
-            // 지면 블록 배치
-            test.setBlockType("minecraft:stone", { x: 2, y: 1, z: 2 });
+            test.succeed();
+        });
+    });
+}).maxTicks(100);
 
-            // 공중에 엔티티 스폰
-            const testEntity = test.spawn("car:basic" as EntityType, { x: 2, y: 3, z: 2 });
+register("psybox", "friction_test", (test: Test) => {
+    // Create different surfaces
+    test.setBlockType("minecraft:stone", { x: 1, y: 1, z: 1 });
+    test.setBlockType("minecraft:ice", { x: 3, y: 1, z: 3 });
 
-            if (!testEntity) {
-                test.fail("지면 감지 테스트 엔티티 스폰 실패");
-                return;
-            }
+    // Spawn entity on stone
+    const testEntity = test.spawn("car:basic", { x: 1, y: 2, z: 1 });   
 
-            let frameCount = 0;
-            const maxFrames = 100; // 5초 제한
+    // Apply horizontal impulse
+    testEntity.applyImpulse({ x: 0.5, y: 0, z: 0.5 });
 
-            test.succeedWhen(() => {
-                frameCount++;
+    // Test that friction slows it down
+    test.runAfterDelay(20, () => {
+        const velocity = testEntity.getVelocity();
 
-                if (frameCount > maxFrames) {
-                    test.fail("테스트 시간 초과");
-                    return;
-                }
+        // Expect horizontal velocity to be reduced
+        test.assert(
+            Math.abs(velocity.x) < 0.5 && Math.abs(velocity.z) < 0.5,
+            "Friction should reduce horizontal velocity"
+        );
 
-                const currentY = testEntity.location.y;
-                const isGrounded = testEntity.getDynamicProperty("physics:isgrounded");
+        test.succeed();
+    });
+}).maxTicks(100);
 
-                // 엔티티가 땅에 착지했는지 확인
-                if (currentY <= 2.5 && isGrounded) {
-                    test.assert(true, "지면 감지 성공");
-                }
-            });
+register("psybox", "properties_test", (test: Test) => {
+    // Create a slope for testing
+    test.setBlockType("minecraft:oak_stairs", { x: 3, y: 1, z: 3 });
 
-        } catch (error) {
-            test.fail(`지면 감지 테스트 실패: ${error}`);
-        }
-    }
+    // Spawn entity above slope
+    const testEntity = test.spawn("car:basic", { x: 3, y: 5, z: 3 });   
 
-    // 물리 프로퍼티 설정 테스트
-    public static physicsPropertiesTest(test: Test): void {
-        try {
-            const testEntity = test.spawn("car:basic" as EntityType, { x: 1, y: 2, z: 1 });
+    // Set custom physics properties
+    testEntity.setDynamicProperty("physics:mass", 2000); // Heavy
+    testEntity.setDynamicProperty("physics:friction", 0.2); // Slippery
 
-            if (!testEntity) {
-                test.fail("물리 프로퍼티 테스트 엔티티 스폰 실패");
-                return;
-            }
+    // Wait for entity to land on slope
+    test.runAfterDelay(30, () => {
+        // Check if properties are properly set
+        const mass = testEntity.getDynamicProperty("physics:mass");
+        const friction = testEntity.getDynamicProperty("physics:friction");
 
-            // 9개 물리 프로퍼티 설정
-            const physicsProperties = {
-                "physics:velx": 1.5,
-                "physics:vely": 0.0,
-                "physics:velz": -0.5,
-                "physics:isgrounded": false,
-                "physics:issliding": false,
-                "physics:slopeangle": 15.0,
-                "physics:slopestrength": 0.3,
-                "physics:mass": 150,
-                "physics:friction": 0.8
-            };
+        test.assert(mass === 2000, "Mass should be 2000");
+        test.assert(friction === 0.2, "Friction should be 0.2");
 
-            // 프로퍼티 설정
-            Object.entries(physicsProperties).forEach(([key, value]) => {
-                testEntity.setDynamicProperty(key, value);
-            });
+        // Check dynamic properties set by physics engine
+        test.runAfterDelay(10, () => {
+            const isGrounded = testEntity.getDynamicProperty("physics:isgrounded");
+            test.assert(isGrounded === true, "Entity should be grounded");
 
-            test.succeedWhen(() => {
-                // 모든 프로퍼티가 올바르게 설정되었는지 검증
-                Object.entries(physicsProperties).forEach(([key, expectedValue]) => {
-                    const actualValue = testEntity.getDynamicProperty(key);
-                    test.assert(actualValue === expectedValue, `프로퍼티 ${key}가 올바르게 설정되지 않음: 예상=${expectedValue}, 실제=${actualValue}`);
-                });
-            });
-
-        } catch (error) {
-            test.fail(`물리 프로퍼티 테스트 실패: ${error}`);
-        }
-    }
-
-    // 속도 시스템 테스트
-    public static velocitySystemTest(test: Test): void {
-        try {
-            const testEntity = test.spawn("car:basic" as EntityType, { x: 3, y: 5, z: 3 });
-
-            if (!testEntity) {
-                test.fail("속도 시스템 테스트 엔티티 스폰 실패");
-                return;
-            }
-
-            // 초기 속도 설정
-            testEntity.setDynamicProperty("physics:velx", 2.0);
-            testEntity.setDynamicProperty("physics:vely", 1.0);
-            testEntity.setDynamicProperty("physics:velz", -1.0);
-
-            test.succeedWhen(() => {
-                const velX = testEntity.getDynamicProperty("physics:velx");
-                const velY = testEntity.getDynamicProperty("physics:vely");
-                const velZ = testEntity.getDynamicProperty("physics:velz");
-
-                // 속도 값들이 설정되었는지 확인
-                test.assert(typeof velX === "number", "X 속도가 숫자가 아님");
-                test.assert(typeof velY === "number", "Y 속도가 숫자가 아님");
-                test.assert(typeof velZ === "number", "Z 속도가 숫자가 아님");
-
-                // 실제 엔티티 속도와 비교
-                const actualVelocity = testEntity.getVelocity();
-                test.assert(Math.abs(actualVelocity.x) >= 0, "실제 X 속도가 적용되지 않음");
-            });
-
-        } catch (error) {
-            test.fail(`속도 시스템 테스트 실패: ${error}`);
-        }
-    }
-
-    // 테스트 결과 조회
-    public static getTestResults(): Map<string, boolean> {
-        return this.testResults;
-    }
-
-    // 테스트 결과 초기화
-    public static clearTestResults(): void {
-        this.testResults.clear();
-    }
-}
-
-// GameTest 등록
-register("psybox", "basic_physics", PhysicsGameTests.basicPhysicsTest);
-register("psybox", "slope_physics", PhysicsGameTests.slopePhysicsTest);
-register("psybox", "ground_detection", PhysicsGameTests.groundDetectionTest);
-register("psybox", "physics_properties", PhysicsGameTests.physicsPropertiesTest);
-register("psybox", "velocity_system", PhysicsGameTests.velocitySystemTest);
+            test.succeed();
+        });
+    });
+}).maxTicks(100);

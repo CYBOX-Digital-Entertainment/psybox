@@ -1,282 +1,270 @@
+
 import { Vector3, Entity, Dimension } from "@minecraft/server";
 
-// 경사면 관련 인터페이스
-interface GroundInfo {
-    isOnGround: boolean;
-    surfaceAngle: number;
-    surfaceNormal: Vector3;
-    surfaceType: string;
+/**
+ * Interface for surface material friction coefficients
+ */
+interface FrictionCoefficients {
+    [key: string]: number;
+    stone: number;
+    dirt: number;
+    grass: number;
+    wood: number;
+    ice: number;
+    default: number;
 }
 
-interface SlopeInfo {
-    angle: number;
-    direction: Vector3;
-    strength: number;
-    isSlippery: boolean;
-}
-
-// Strategy 패턴으로 구현된 경사면 물리학 클래스
+/**
+ * Handles slope physics calculations and detection
+ */
 export class SlopePhysics {
-    // 물리 상수들 (사용되지 않는 것들 제거)
-    private readonly GRAVITY_STRENGTH = 0.08;
-    private readonly MAX_SLOPE_ANGLE = 60.0;
-    private readonly FRICTION_COEFFICIENTS = {
+    private readonly GRAVITY: number = -0.08;
+    private readonly MAX_SLOPE_ANGLE: number = 60; // degrees
+    private readonly MIN_SLOPE_ANGLE: number = 5; // degrees
+    private readonly MAX_GROUND_DISTANCE: number = 0.6;
+    private readonly FRICTION_COEFFICIENTS: FrictionCoefficients = {
         stone: 0.7,
         dirt: 0.6,
         grass: 0.65,
         wood: 0.5,
-        ice: 0.1,
+        ice: 0.05,
         default: 0.6
     };
 
-    constructor() {
-        // 초기화 로직
-    }
+    /**
+     * Process an entity's physics on slopes
+     */
+    public processEntity(entity: Entity): void {
+        if (!entity.isValid) return;
 
-    // 엔티티의 지면 정보 분석
-    public analyzeGround(entity: Entity): GroundInfo {
         try {
-            const location = entity.location;
-            const dimension = entity.dimension;
+            // Check if entity is on ground
+            const isGrounded = this.isEntityGrounded(entity);
 
-            // 발 아래 블럭 검사
-            const belowLocation = {
-                x: Math.floor(location.x),
-                y: Math.floor(location.y - 0.1),
-                z: Math.floor(location.z)
-            };
+            // Set dynamic property for ground state
+            entity.setDynamicProperty("physics:isgrounded", isGrounded);
 
-            const block = dimension.getBlock(belowLocation);
-            if (!block || block.isAir) {
-                return {
-                    isOnGround: false,
-                    surfaceAngle: 0,
-                    surfaceNormal: { x: 0, y: 1, z: 0 },
-                    surfaceType: "air"
-                };
-            }
+            if (isGrounded) {
+                // Get slope information
+                const slopeInfo = this.getSlopeInfo(entity);
 
-            // 8방향 경사면 검출
-            const slopeAngle = this.calculateSlopeAngle(entity, dimension);
-            const surfaceNormal = this.calculateSurfaceNormal(entity, dimension);
+                // Set dynamic properties for slope
+                entity.setDynamicProperty("physics:issliding", slopeInfo.isOnSlope);
+                entity.setDynamicProperty("physics:slopeangle", slopeInfo.angle);
+                entity.setDynamicProperty("physics:slopestrength", slopeInfo.strength);
 
-            return {
-                isOnGround: true,
-                surfaceAngle: slopeAngle,
-                surfaceNormal: surfaceNormal,
-                surfaceType: block.typeId
-            };
-
-        } catch (error) {
-            console.error("§c[SlopePhysics] 지면 분석 실패:", error);
-            return {
-                isOnGround: false,
-                surfaceAngle: 0,
-                surfaceNormal: { x: 0, y: 1, z: 0 },
-                surfaceType: "unknown"
-            };
-        }
-    }
-
-    // 경사면 물리 적용
-    public applyPhysics(entity: Entity, groundInfo: GroundInfo, deltaTime: number): void {
-        try {
-            if (!entity.isValid || !groundInfo.isOnGround) return;
-
-            const slopeInfo = this.calculateSlopeInfo(groundInfo);
-
-            if (slopeInfo.angle > 5.0 && slopeInfo.angle < this.MAX_SLOPE_ANGLE) {
-                this.applySlopeForces(entity, slopeInfo, groundInfo, deltaTime);
-            }
-
-        } catch (error) {
-            console.error("§c[SlopePhysics] 물리 적용 실패:", error);
-        }
-    }
-
-    private calculateSlopeAngle(entity: Entity, dimension: Dimension): number {
-        try {
-            const location = entity.location;
-            const checkRadius = 1.0;
-            let maxHeightDiff = 0;
-
-            // 8방향 높이 검사
-            const directions = [
-                { x: 1, z: 0 }, { x: -1, z: 0 },
-                { x: 0, z: 1 }, { x: 0, z: -1 },
-                { x: 1, z: 1 }, { x: -1, z: -1 },
-                { x: 1, z: -1 }, { x: -1, z: 1 }
-            ];
-
-            const baseHeight = Math.floor(location.y);
-
-            directions.forEach(dir => {
-                const checkLocation = {
-                    x: Math.floor(location.x + dir.x * checkRadius),
-                    y: baseHeight,
-                    z: Math.floor(location.z + dir.z * checkRadius)
-                };
-
-                // 해당 위치에서 가장 높은 블럭 찾기
-                for (let y = baseHeight + 3; y >= baseHeight - 3; y--) {
-                    const testLocation = { ...checkLocation, y };
-                    const block = dimension.getBlock(testLocation);
-
-                    if (block && !block.isAir) {
-                        const heightDiff = Math.abs(y - baseHeight);
-                        maxHeightDiff = Math.max(maxHeightDiff, heightDiff);
-                        break;
-                    }
+                // Apply slope physics if on a slope
+                if (slopeInfo.isOnSlope) {
+                    this.applySlopeForces(entity, slopeInfo);
                 }
+            }
+        } catch (error) {
+            console.error(`Slope physics error: ${error}`);
+        }
+    }
+
+    /**
+     * Check if an entity is touching the ground
+     */
+    public isEntityGrounded(entity: Entity): boolean {
+        try {
+            const position = entity.location;
+            const velocity = entity.getVelocity();
+
+            // Quick check: if moving upward, not grounded
+            if (velocity.y > 0.05) return false;
+
+            // Check block below
+            const blockBelow = entity.dimension.getBlock({
+                x: Math.floor(position.x),
+                y: Math.floor(position.y - 0.1),
+                z: Math.floor(position.z)
             });
 
-            // 각도 계산
-            return Math.atan(maxHeightDiff / checkRadius) * 180 / Math.PI;
+            // If no block below or block is air, not grounded
+            if (!blockBelow || blockBelow.typeId === "minecraft:air") return false;
 
-        } catch (error) {
-            console.error("§c[SlopePhysics] 경사각 계산 실패:", error);
-            return 0;
-        }
-    }
-
-    private calculateSurfaceNormal(entity: Entity, dimension: Dimension): Vector3 {
-        try {
-            const location = entity.location;
-
-            // 전방과 우측 벡터로 법선 벡터 계산
-            const forward = this.getHeightAt(dimension, location.x + 1, location.z) - 
-                           this.getHeightAt(dimension, location.x - 1, location.z);
-            const right = this.getHeightAt(dimension, location.x, location.z + 1) - 
-                         this.getHeightAt(dimension, location.x, location.z - 1);
-
-            // 외적으로 법선 벡터 계산
-            const normal = {
-                x: -forward,
-                y: 2.0,
-                z: -right
+            // Advanced check: ray cast down
+            const downOffset = 0.5; // Check this distance below the entity
+            const rayOptions = {
+                maxDistance: downOffset
             };
 
-            // 정규화
-            const length = Math.sqrt(normal.x ** 2 + normal.y ** 2 + normal.z ** 2);
-            if (length > 0) {
-                return {
-                    x: normal.x / length,
-                    y: normal.y / length,
-                    z: normal.z / length
-                };
-            }
-
-            return { x: 0, y: 1, z: 0 };
-
+            const blockHit = entity.dimension.getBlockFromViewDirection(rayOptions);
+            return blockHit !== undefined;
         } catch (error) {
-            console.error("§c[SlopePhysics] 표면 법선 계산 실패:", error);
-            return { x: 0, y: 1, z: 0 };
+            console.error(`Ground check error: ${this.safeStringify(error)}`);
+            return false;
         }
     }
 
-    private getHeightAt(dimension: Dimension, x: number, z: number): number {
-        try {
-            const baseY = 100; // 적당한 기준 높이
+    /**
+     * Get information about the slope under the entity
+     */
+    public getSlopeInfo(entity: Entity): { isOnSlope: boolean, angle: number, strength: number, direction: Vector3 } {
+        const defaultResult = { isOnSlope: false, angle: 0, strength: 0, direction: { x: 0, y: 0, z: 0 } };
 
-            // 위에서 아래로 블럭 찾기
-            for (let y = baseY + 50; y >= baseY - 50; y--) {
-                const block = dimension.getBlock({ x: Math.floor(x), y, z: Math.floor(z) });
-                if (block && !block.isAir) {
-                    return y;
+        try {
+            // If not grounded, no slope
+            if (!this.isEntityGrounded(entity)) return defaultResult;
+
+            const position = entity.location;
+
+            // Check blocks in all 8 directions around entity
+            const directions = [
+                { x: 1, z: 0 },   // East
+                { x: 1, z: 1 },   // Southeast
+                { x: 0, z: 1 },   // South
+                { x: -1, z: 1 },  // Southwest
+                { x: -1, z: 0 },  // West
+                { x: -1, z: -1 }, // Northwest
+                { x: 0, z: -1 },  // North
+                { x: 1, z: -1 }   // Northeast
+            ];
+
+            let maxAngle = 0;
+            let maxDirection = { x: 0, y: 0, z: 0 };
+
+            for (const dir of directions) {
+                // Check for height difference in this direction
+                const blockPos = {
+                    x: Math.floor(position.x + dir.x),
+                    y: Math.floor(position.y - 0.1),
+                    z: Math.floor(position.z + dir.z)
+                };
+
+                const blockAtPos = entity.dimension.getBlock(blockPos);
+                if (!blockAtPos) continue;
+
+                // Check blocks above and below to determine slope
+                const blockAbove = entity.dimension.getBlock({
+                    x: blockPos.x,
+                    y: blockPos.y + 1,
+                    z: blockPos.z
+                });
+
+                const blockBelow = entity.dimension.getBlock({
+                    x: blockPos.x,
+                    y: blockPos.y - 1,
+                    z: blockPos.z
+                });
+
+                // Calculate slope angle based on blocks
+                let angle = 0;
+
+                // Stairs and slabs have predefined angles
+                if (blockAtPos.typeId.includes("stairs")) {
+                    angle = 30; // Approx 30 degrees for stairs
+                } else if (blockAtPos.typeId.includes("slab")) {
+                    angle = 15; // Approx 15 degrees for slabs
+                } else if (blockAbove && blockAbove.typeId === "minecraft:air" && 
+                           blockBelow && blockBelow.typeId !== "minecraft:air") {
+                    // Calculate angle based on block layout
+                    angle = 45; // Approximate for regular blocks
+                }
+
+                // Keep track of steepest slope
+                if (angle > maxAngle) {
+                    maxAngle = angle;
+                    maxDirection = { 
+                        x: -dir.x, // Invert direction to slide downhill
+                        y: -0.1,   // Slight downward force
+                        z: -dir.z  // Invert direction to slide downhill
+                    };
                 }
             }
 
-            return baseY;
-        } catch {
-            return 100;
+            // Check if angle is within slope range
+            const isOnSlope = maxAngle >= this.MIN_SLOPE_ANGLE && maxAngle <= this.MAX_SLOPE_ANGLE;
+
+            // Calculate slope strength (0-1) based on angle
+            const strength = isOnSlope ? 
+                (maxAngle - this.MIN_SLOPE_ANGLE) / (this.MAX_SLOPE_ANGLE - this.MIN_SLOPE_ANGLE) : 0;
+
+            return {
+                isOnSlope,
+                angle: maxAngle,
+                strength,
+                direction: maxDirection
+            };
+        } catch (error) {
+            console.error(`Slope info error: ${this.safeStringify(error)}`);
+            return defaultResult;
         }
     }
 
-    private calculateSlopeInfo(groundInfo: GroundInfo): SlopeInfo {
-        const angle = groundInfo.surfaceAngle;
-        const direction = {
-            x: -groundInfo.surfaceNormal.x,
-            y: 0,
-            z: -groundInfo.surfaceNormal.z
-        };
-
-        // 방향 벡터 정규화
-        const length = Math.sqrt(direction.x ** 2 + direction.z ** 2);
-        if (length > 0) {
-            direction.x /= length;
-            direction.z /= length;
-        }
-
-        return {
-            angle: angle,
-            direction: direction,
-            strength: Math.min(angle / 45.0, 1.0),
-            isSlippery: angle > 25.0
-        };
-    }
-
-    private applySlopeForces(entity: Entity, slopeInfo: SlopeInfo, groundInfo: GroundInfo, deltaTime: number): void {
+    /**
+     * Apply physics forces for entities on slopes
+     */
+    private applySlopeForces(entity: Entity, slopeInfo: { direction: Vector3, strength: number, angle: number }): void {
         try {
-            const currentVelocity = entity.getVelocity();
+            // Get entity information
+            const velocity = entity.getVelocity();
+            const mass = entity.getDynamicProperty("physics:mass") as number || 70; // Default 70kg
 
-            // 경사면 아래로 향하는 힘 계산
-            const slopeForce = this.GRAVITY_STRENGTH * slopeInfo.strength * deltaTime;
+            // Get surface type for friction
+            const position = entity.location;
+            const blockBelow = entity.dimension.getBlock({
+                x: Math.floor(position.x),
+                y: Math.floor(position.y - 0.1),
+                z: Math.floor(position.z)
+            });
 
-            // 마찰 계수 계산
-            const surfaceType = this.getSurfaceType(groundInfo.surfaceType);
-            const friction = this.FRICTION_COEFFICIENTS[surfaceType] || this.FRICTION_COEFFICIENTS.default;
-
-            // 새로운 속도 계산
-            const finalVelX = currentVelocity.x + (slopeInfo.direction.x * slopeForce);
-            const finalVelZ = currentVelocity.z + (slopeInfo.direction.z * slopeForce);
-
-            // applyKnockback 메서드 시그니처 수정 (VectorXZ와 verticalStrength 사용)
-            entity.applyKnockback(
-                { x: finalVelX * 0.1, z: finalVelZ * 0.1 }, // VectorXZ
-                currentVelocity.y * 0.1 // verticalStrength
-            );
-
-            // 마찰 적용
-            if (!slopeInfo.isSlippery) {
-                entity.applyKnockback(
-                    { 
-                        x: -currentVelocity.x * friction * 0.1, 
-                        z: -currentVelocity.z * friction * 0.1 
-                    },
-                    0
-                );
+            // Get surface type and apply corresponding friction
+            let surfaceType = "default";
+            if (blockBelow) {
+                const blockId = blockBelow.typeId;
+                if (blockId.includes("stone")) surfaceType = "stone";
+                else if (blockId.includes("dirt")) surfaceType = "dirt";
+                else if (blockId.includes("grass")) surfaceType = "grass";
+                else if (blockId.includes("wood")) surfaceType = "wood";
+                else if (blockId.includes("ice")) surfaceType = "ice";
             }
 
+            // Get friction coefficient for this surface
+            const friction = this.FRICTION_COEFFICIENTS[surfaceType] || this.FRICTION_COEFFICIENTS.default;
+
+            // Calculate sliding force based on angle, mass and friction
+            const gravityForce = Math.sin(slopeInfo.angle * Math.PI / 180) * this.GRAVITY * mass;
+            const frictionForce = friction * Math.cos(slopeInfo.angle * Math.PI / 180) * mass;
+
+            // Calculate net force
+            const netForce = gravityForce - frictionForce;
+
+            // Only apply force if net force is positive (overcomes friction)
+            if (netForce > 0) {
+                // Calculate slide vector
+                const horizontalForce = {
+                    x: slopeInfo.direction.x * slopeInfo.strength * 0.1,
+                    y: 0,
+                    z: slopeInfo.direction.z * slopeInfo.strength * 0.1
+                };
+
+                const verticalStrength = slopeInfo.direction.y * 0.05;
+
+                // Apply the impulse with a single Vector3
+                entity.applyImpulse({
+                    x: horizontalForce.x,
+                    y: verticalStrength,
+                    z: horizontalForce.z
+                });
+            }
         } catch (error) {
-            console.error("§c[SlopePhysics] 경사면 힘 적용 실패:", error);
+            console.error(`Apply slope forces error: ${this.safeStringify(error)}`);
         }
     }
 
-    private getSurfaceType(blockType: string): string {
-        if (blockType.includes("stone")) return "stone";
-        if (blockType.includes("dirt")) return "dirt";
-        if (blockType.includes("grass")) return "grass";
-        if (blockType.includes("wood") || blockType.includes("log")) return "wood";
-        if (blockType.includes("ice")) return "ice";
-        return "default";
-    }
-
-    // 경사면 정보를 JSON으로 반환 (디버깅용)
-    public getSlopeData(entity: Entity): string {
+    /**
+     * Safely stringify an error object
+     */
+    private safeStringify(error: unknown): string {
         try {
-            const groundInfo = this.analyzeGround(entity);
-            const slopeInfo = this.calculateSlopeInfo(groundInfo);
-
-            return JSON.stringify({
-                isOnGround: groundInfo.isOnGround,
-                surfaceAngle: groundInfo.surfaceAngle.toFixed(2),
-                slopeStrength: slopeInfo.strength.toFixed(2),
-                isSlippery: slopeInfo.isSlippery,
-                surfaceType: groundInfo.surfaceType
-            }, null, 2);
-
-        } catch (error) {
-            return JSON.stringify({ error: error.toString() });
+            if (error instanceof Error) {
+                return error.toString();
+            }
+            return String(error);
+        } catch {
+            return "Unknown error";
         }
     }
 }
