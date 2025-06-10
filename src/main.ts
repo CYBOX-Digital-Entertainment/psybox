@@ -1,6 +1,8 @@
 import { system, world } from "@minecraft/server";
 import { SlopePhysics } from "./physics/beta/SlopePhysics";
-import { DebugHUD } from "./events/DebugHud";
+import { DebugHUD } from "./events/DebugHud"; // 경로 확인 완료
+import { SteeringSystem } from "./physics/SteeringSystem";
+import { InputHandler } from "./events/InputHandler";
 
 class PsyboxPhysicsEngine {
     private static instance: PsyboxPhysicsEngine;
@@ -9,9 +11,6 @@ class PsyboxPhysicsEngine {
 
     private constructor() {
         system.runInterval(() => this.update());
-        system.afterEvents.scriptEventReceive.subscribe((event) => {
-            if (event.id === "psybox:debug_on") this.debugHUD.toggle(event.sourceEntity);
-        });
     }
 
     private update() {
@@ -30,3 +29,6 @@ class PsyboxPhysicsEngine {
 }
 
 PsyboxPhysicsEngine.getInstance();
+
+const steeringSystem = new SteeringSystem();
+const inputHandler = new InputHandler();

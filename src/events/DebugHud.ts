@@ -1,4 +1,4 @@
-import { Entity, Player } from "@minecraft/server";
+import { Entity, Player, world } from "@minecraft/server"; // world 추가 임포트
 
 export class DebugHUD {
     private activePlayers = new Set<string>();
@@ -15,15 +15,15 @@ export class DebugHUD {
         
         const velocity = entity.getVelocity();
         const debugInfo = [
-            `X: ${velocity.x.toFixed(2)}`,
-            `Y: ${velocity.y.toFixed(2)}`,
-            `Z: ${velocity.z.toFixed(2)}`,
+            `VelX: ${velocity.x.toFixed(2)}`,
+            `VelY: ${velocity.y.toFixed(2)}`,
+            `VelZ: ${velocity.z.toFixed(2)}`,
             `Grounded: ${entity.isOnGround}`
         ].join(' | ');
 
         for (const playerName of this.activePlayers) {
             const player = [...world.getPlayers()].find(p => p.name === playerName);
-            player?.sendMessage(debugInfo);
+            player?.sendMessage(`§a[Psybox] ${debugInfo}`);
         }
     }
 }
