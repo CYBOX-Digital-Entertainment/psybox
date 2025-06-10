@@ -7,7 +7,8 @@
     "rootDir": "src",
     "types": [
       "@minecraft/server",
-      "@minecraft/server-gametest"
+      "@minecraft/server-gametest",
+      "@minecraft/vanilla-data"
     ]
   }
 }
