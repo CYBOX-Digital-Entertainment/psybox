@@ -1,8 +1,9 @@
+
 {
   "name": "psybox-physics-engine",
-  "version": "2.0.0-beta",
-  "description": "Minecraft Bedrock 1.21.82 Physics Engine - Script API 2.0.0-beta",
-  "main": "dist/main.js",
+  "version": "2.1.0-beta",
+  "description": "Minecraft Bedrock 1.21.82 Physics Engine",
+  "main": "scripts/main.js",
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch"

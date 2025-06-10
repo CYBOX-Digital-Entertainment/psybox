@@ -1,0 +1,84 @@
+
+{
+  "format_version": "1.21.0",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "cybox:spirra",
+      "properties": {
+        "phys:velx": {
+          "type": "float",
+          "range": [-50.0, 50.0],
+          "default": 0.0,
+          "client_sync": true
+        },
+        "phys:vely": {
+          "type": "float", 
+          "range": [-50.0, 50.0],
+          "default": 0.0,
+          "client_sync": true
+        },
+        "phys:velz": {
+          "type": "float",
+          "range": [-50.0, 50.0], 
+          "default": 0.0,
+          "client_sync": true
+        },
+        "phys:isgrounded": {
+          "type": "bool",
+          "default": false,
+          "client_sync": true
+        },
+        "phys:issliding": {
+          "type": "bool",
+          "default": false,
+          "client_sync": true
+        },
+        "phys:slopeangle": {
+          "type": "float",
+          "range": [-90.0, 90.0],
+          "default": 0.0,
+          "client_sync": true
+        },
+        "phys:slopestrength": {
+          "type": "float",
+          "range": [0.0, 10.0],
+          "default": 0.0,
+          "client_sync": true
+        },
+        "phys:mass": {
+          "type": "float",
+          "range": [0.1, 10.0],
+          "default": 1.0,
+          "client_sync": true
+        },
+        "phys:friction": {
+          "type": "float",
+          "range": [0.0, 1.0],
+          "default": 0.5,
+          "client_sync": true
+        }
+      }
+    },
+    "components": {
+      "minecraft:physics": {
+        "has_collision": true,
+        "has_gravity": true
+      },
+      "minecraft:movement": {
+        "value": 0.25
+      },
+      "minecraft:collision_box": {
+        "width": 3.1,
+        "height": 2
+      },
+      "minecraft:type_family": {
+        "family": [
+          "cybox",
+          "spirra",
+          "vehicle",
+          "psybox"
+        ]
+      }
+    }
+  }
+}
