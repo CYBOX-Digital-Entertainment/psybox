@@ -1,31 +1,33 @@
-
 {
   "format_version": 2,
   "header": {
     "name": "Psybox Physics Engine",
-    "description": "Beta API 2.0.0 물리엔진 시스템",
-    "uuid": "1c81c200-0c67-4932-8e84-d18dba5550e3",
-    "version": [1, 0, 0],
-    "min_engine_version": [1, 21, 80]
+    "description": "Advanced physics simulation for terrain-conforming entities with slope detection",
+    "uuid": "a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d",
+    "version": [2, 1, 2],
+    "min_engine_version": [1, 21, 70]
   },
   "modules": [
     {
       "type": "script",
       "language": "javascript",
-      "uuid": "3e5f6789-abcd-1234-5678-901234567890",
-      "version": [1, 0, 0],
+      "uuid": "b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e",
+      "version": [2, 1, 2],
       "entry": "scripts/main.js"
     }
   ],
   "dependencies": [
     {
       "module_name": "@minecraft/server",
-      "version": "2.0.0-beta.1.21.82-stable"
+      "version": "2.0.0-beta"
     },
     {
       "module_name": "@minecraft/server-gametest",
-      "version": "1.0.0-beta.1.21.70-stable"
+      "version": "1.0.0-beta"
     }
   ],
-  "capabilities": ["script_eval"]
+  "capabilities": [
+    "script_eval",
+    "raycast"
+  ]
 }

@@ -1,18 +1,22 @@
-
 {
   "name": "psybox-physics-engine",
-  "version": "2.1.0-beta",
-  "description": "Minecraft Bedrock 1.21.82 Physics Engine",
+  "version": "2.1.2-beta",
+  "description": "Advanced physics engine for Minecraft Bedrock Edition",
   "main": "scripts/main.js",
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "clean": "rimraf scripts"
   },
+  "keywords": ["minecraft", "bedrock", "physics", "addon"],
+  "author": "Psybox Team",
+  "license": "MIT",
   "dependencies": {
     "@minecraft/server": "2.0.0-beta.1.21.82-stable",
     "@minecraft/server-gametest": "1.0.0-beta.1.21.70-stable"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "rimraf": "^3.0.2"
   }
 }

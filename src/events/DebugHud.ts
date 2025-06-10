@@ -1,58 +1,73 @@
-import { system, world } from "@minecraft/server";
+import { Entity, Player, system } from "@minecraft/server";
 
-/**
- * 실시간 디버그 HUD 시스템
- */
-let debugEnabled = false;
+export class DebugHud {
+    private static debugEntities: Set<Entity> = new Set();
 
-system.afterEvents.scriptEventReceive.subscribe(({ id }) => {
-  if (id === "psybox:debug_on") {
-    debugEnabled = true;
-    world.sendMessage("§a[PSYBOX] 디버그 HUD 활성화됨");
-  } else if (id === "psybox:debug_off") {
-    debugEnabled = false;
-    world.sendMessage("§c[PSYBOX] 디버그 HUD 비활성화됨");
-  }
-});
-
-// 1초마다 디버그 HUD 업데이트
-system.runInterval(() => {
-  if (!debugEnabled) return;
-
-  try {
-    const overworld = world.getDimension("overworld");
-    const entities = overworld.getEntities({ families: ["psybox"] });
-
-    for (const entity of entities) {
-      // entity.isValid 메서드 호출 방식 수정
-      if (!entity || !(typeof entity.isValid === "function" ? entity.isValid() : true)) continue;
-
-      const velocity = entity.getVelocity();
-      const isSliding = entity.getDynamicProperty("phys:issliding") as boolean;
-      const slopeAngle = entity.getDynamicProperty("phys:slopeangle") as number;
-      const slopeStrength = entity.getDynamicProperty("phys:slopestrength") as number;
-      const isGrounded = entity.getDynamicProperty("phys:isgrounded") as boolean;
-
-      // 상태별 이모지
-      let slideEmoji = isSliding ? "🟢" : "🔴";
-      let groundEmoji = isGrounded ? "🟢" : "🔴";
-      let slopeEmoji = "⚪";
-
-      if (slopeStrength > 0.3) slopeEmoji = "🔴"; // 급경사
-      else if (slopeStrength > 0.15) slopeEmoji = "🟡"; // 중간경사
-      else if (slopeStrength > 0.05) slopeEmoji = "🟢"; // 완만한경사
-
-      // 네임태그 업데이트
-      entity.nameTag = [
-        `속도: ${Math.sqrt(velocity.x*velocity.x + velocity.z*velocity.z).toFixed(2)}m/s`,
-        `높이: ${velocity.y.toFixed(2)}m/s`,
-        `미끄러짐: ${slideEmoji} | 지면: ${groundEmoji}`,
-        `경사: ${slopeAngle ? slopeAngle.toFixed(1) : "0.0"}° ${slopeEmoji}`
-      ].join('\n');
+    public static addEntity(entity: Entity): void {
+        this.debugEntities.add(entity);
     }
-  } catch (error) {
-    console.warn("[PSYBOX] 디버그 HUD 오류:", error);
-  }
-}, 20);
 
-console.log("✅ 디버그 HUD 시스템 로드 완료");
+    public static removeEntity(entity: Entity): void {
+        this.debugEntities.delete(entity);
+    }
+
+    public static updateAll(): void {
+        const entitiesToRemove: Entity[] = [];
+
+        for (const entity of this.debugEntities) {
+            if (!entity.isValid) {
+                entitiesToRemove.push(entity);
+                continue;
+            }
+
+            this.showEntityDebug(entity);
+        }
+
+        // 유효하지 않은 엔티티 제거
+        for (const entity of entitiesToRemove) {
+            this.debugEntities.delete(entity);
+        }
+    }
+
+    private static showEntityDebug(entity: Entity): void {
+        try {
+            const location = entity.location;
+            const velocity = entity.getVelocity();
+
+            // 물리 프로퍼티 가져오기
+            const velX = entity.getDynamicProperty("psybox:velx") as number || 0;
+            const velY = entity.getDynamicProperty("psybox:vely") as number || 0;
+            const velZ = entity.getDynamicProperty("psybox:velz") as number || 0;
+            const isGrounded = entity.getDynamicProperty("psybox:isgrounded") as boolean || false;
+            const isSliding = entity.getDynamicProperty("psybox:issliding") as boolean || false;
+            const slopeAngle = entity.getDynamicProperty("psybox:slopeangle") as number || 0;
+
+            const debugInfo = [
+                "§e=== Psybox Physics Debug ===",
+                `§7엔티티: ${entity.typeId}`,
+                `§7위치: §f${location.x.toFixed(1)}, ${location.y.toFixed(1)}, ${location.z.toFixed(1)}`,
+                `§7실제속도: §f${velocity.x.toFixed(2)}, ${velocity.y.toFixed(2)}, ${velocity.z.toFixed(2)}`,
+                `§7시뮬속도: §f${velX.toFixed(2)}, ${velY.toFixed(2)}, ${velZ.toFixed(2)}`,
+                `§7지면접촉: ${isGrounded ? "§a예" : "§c아니오"}`,
+                `§7경사상태: ${isSliding ? "§6미끄러짐" : "§a평지"}`,
+                `§7경사각도: §f${slopeAngle.toFixed(1)}°`
+            ];
+
+            // 근처 플레이어에게 표시
+            const nearbyPlayers = entity.dimension.getEntitiesAtBlockLocation(entity.location);
+            for (const nearbyEntity of nearbyPlayers) {
+                if (nearbyEntity instanceof Player) {
+                    nearbyEntity.runCommand(`title @s actionbar ${debugInfo.join("\n")}`);
+                }
+            }
+
+        } catch (error) {
+            console.warn(`[DebugHud] 디버그 표시 오류: ${error}`);
+        }
+    }
+}
+
+// 디버그 HUD 업데이트 루프 시작
+system.runInterval(() => {
+    DebugHud.updateAll();
+}, 5); // 5틱마다 업데이트

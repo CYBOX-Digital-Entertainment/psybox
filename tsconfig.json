@@ -1,16 +1,27 @@
-
 {
   "compilerOptions": {
     "target": "ES2020",
     "module": "ES2020",
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
+    "baseUrl": "./src",
+    "rootDir": "./src",
     "outDir": "./scripts",
     "declaration": false,
-    "noImplicitAny": false,
-    "noImplicitThis": false,
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "exactOptionalPropertyTypes": false,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "scripts"
+  ]
 }
