@@ -1,27 +1,52 @@
 import { world, system } from "@minecraft/server";
+import { getRegisteredCars } from "./registry";
+const SPEED_INCREMENT = 0.1;
+const directions = [
+    { dir: "east", dx: SPEED_INCREMENT, dz: 0 },
+    { dir: "north", dx: 0, dz: -SPEED_INCREMENT },
+    { dir: "south", dx: 0, dz: SPEED_INCREMENT },
+    { dir: "west", dx: -SPEED_INCREMENT, dz: 0 },
+];
 system.runInterval(() => {
-    for (const e of world.getDimension("overworld").getEntities({ type: "car:basic" })) {
-        const l = e.location;
-        const b = e.dimension.getBlock({ x: l.x, y: l.y - 1, z: l.z });
-        if (!b || !b.typeId.includes("stairs"))
+    const overworld = world.getDimension("overworld");
+    for (const [entity, config] of getRegisteredCars(overworld)) {
+        const loc = entity.location;
+        const block = entity.dimension.getBlock({ x: loc.x, y: loc.y - 1, z: loc.z });
+        if (!block)
             continue;
-        const d = b.permutation.getAllStates()["weirdo_direction"];
-        const v = e.getVelocity();
-        let x = v.x, z = v.z;
-        switch (d) {
+        const blockType = block.typeId;
+        let { x: vx, z: vz } = entity.getVelocity();
+        const slabApplied = directions.some(({ dir, dx, dz }) => {
+            const adjacent = block[dir]?.();
+            const adjType = adjacent?.typeId ?? "";
+            if ((adjType.includes("slab") && !blockType.includes("slab")) ||
+                (blockType.includes("slab") && adjType.includes("air"))) {
+                vx += dx;
+                vz += dz;
+                entity.applyImpulse({ x: vx, y: config.yImpulse, z: vz });
+                return true;
+            }
+            return false;
+        });
+        if (slabApplied)
+            continue;
+        if (!blockType.includes("stairs"))
+            continue;
+        const dirId = block.permutation.getAllStates()["weirdo_direction"];
+        switch (dirId) {
             case 1:
-                x += 0.1;
+                vx += SPEED_INCREMENT;
                 break;
             case 2:
-                z -= 0.1;
+                vz -= SPEED_INCREMENT;
                 break;
             case 3:
-                z += 0.1;
+                vz += SPEED_INCREMENT;
                 break;
             case 0:
-                x -= 0.1;
+                vx -= SPEED_INCREMENT;
                 break;
         }
-        e.applyImpulse({ x, y: -10, z });
+        entity.applyImpulse({ x: vx, y: config.yImpulse, z: vz });
     }
 }, 2);
