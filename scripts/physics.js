@@ -61,7 +61,7 @@ system.runInterval(() => {
             return false;
         });
         if (slabApplied || !blockType.includes('stairs'))
-            return;
+            continue;
         const dirId = block.permutation.getAllStates()['weirdo_direction'];
         const directionMap = {
             0: { dir: 'west', block: block.west(1) },
@@ -70,9 +70,9 @@ system.runInterval(() => {
             3: { dir: 'south', block: block.south(1) },
         };
         if (typeof dirId !== 'number')
-            return;
+            continue;
         if (!directionMap[dirId]?.block?.typeId.includes(':air'))
-            return;
+            continue;
         applyPhysics(entity, config, directionMap[dirId].dir, STAIRS_SPEED);
     }
 }, 2);
