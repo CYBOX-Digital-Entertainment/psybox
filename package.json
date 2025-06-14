@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@minecraft/server": "^2.0.0-beta.1.21.82-stable"
+    "@minecraft/server": "1.19.0"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
