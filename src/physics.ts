@@ -1,10 +1,13 @@
 import { world, system, Entity, Block } from '@minecraft/server';
 import { CarConfig, getRegisteredCars } from './registry';
 
-const SLAB_SPEED = 0.1;
-const STAIRS_SPEED = 0.2;
+const SLAB_SPEED = 0.05;
+const STAIRS_SPEED = 0.07;
 
 const directions = ['east', 'north', 'south', 'west'] as const;
+
+const isSlab = (t: string) => t.includes('slab');
+const isAir = (t: string) => t.includes(':air');
 
 function applyPhysics(entity: Entity, config: CarConfig, dir: string, speedScale: number) {
   const yawDegrees = entity.getRotation().y;
@@ -51,6 +54,9 @@ function applyPhysics(entity: Entity, config: CarConfig, dir: string, speedScale
   };
 
   entity.applyImpulse(impulse);
+  if (deviation < 20) return;
+  if (isBackward) entity.triggerEvent('phy_back');
+  else entity.triggerEvent('phy_front');
 }
 
 system.runInterval(() => {
@@ -60,7 +66,7 @@ system.runInterval(() => {
 
     while (loc.y > 0) {
       const b = entity.dimension.getBlock(loc); loc.y--;
-      if (!b || b.typeId == 'minecraft:air') continue;
+      if (!b || isAir(b.typeId)) continue;
       block = b; break;
     }
     if (!block) continue;
@@ -70,8 +76,10 @@ system.runInterval(() => {
       const adjacent = block[dir]?.();
       const adjType = adjacent?.typeId ?? '';
 
-      if ((adjType.includes('slab') && !(blockType.includes('slab') || blockType.includes(':air'))) ||
-          (blockType.includes('slab') && adjType.includes(':air'))) {
+      if (
+        (isSlab(adjType) && isAir(adjacent?.above()?.typeId ?? '') && !isSlab(blockType) && !isAir(blockType)) ||
+        (isSlab(blockType) && isAir(adjType))
+      ) { 
         applyPhysics(entity, config, dir, SLAB_SPEED); return true;
       }
 
@@ -89,7 +97,7 @@ system.runInterval(() => {
     };
 
     if (typeof dirId !== 'number') continue;
-    if (!directionMap[dirId]?.block?.typeId.includes(':air')) continue;
+    if (!isAir(directionMap[dirId]?.block?.typeId)) continue;
 
     applyPhysics(entity, config, directionMap[dirId].dir, STAIRS_SPEED);
   }
