@@ -1,8 +1,10 @@
 import { world, system } from '@minecraft/server';
 import { getRegisteredCars } from './registry';
-const SLAB_SPEED = 0.1;
-const STAIRS_SPEED = 0.2;
+const SLAB_SPEED = 0.05;
+const STAIRS_SPEED = 0.07;
 const directions = ['east', 'north', 'south', 'west'];
+const isSlab = (t) => t.includes('slab');
+const isAir = (t) => t.includes(':air');
 function applyPhysics(entity, config, dir, speedScale) {
     const yawDegrees = entity.getRotation().y;
     const yawRadians = (yawDegrees * Math.PI) / 180;
@@ -41,6 +43,12 @@ function applyPhysics(entity, config, dir, speedScale) {
         z: directionZ * fadeFactor * speedScale,
     };
     entity.applyImpulse(impulse);
+    if (deviation < 20)
+        return;
+    if (isBackward)
+        entity.triggerEvent('phy_back');
+    else
+        entity.triggerEvent('phy_front');
 }
 system.runInterval(() => {
     for (const [entity, config] of getRegisteredCars(world.getDimension('overworld'))) {
@@ -49,7 +57,7 @@ system.runInterval(() => {
         while (loc.y > 0) {
             const b = entity.dimension.getBlock(loc);
             loc.y--;
-            if (!b || b.typeId == 'minecraft:air')
+            if (!b || isAir(b.typeId))
                 continue;
             block = b;
             break;
@@ -60,8 +68,8 @@ system.runInterval(() => {
         const slabApplied = directions.some(dir => {
             const adjacent = block[dir]?.();
             const adjType = adjacent?.typeId ?? '';
-            if ((adjType.includes('slab') && !(blockType.includes('slab') || blockType.includes(':air'))) ||
-                (blockType.includes('slab') && adjType.includes(':air'))) {
+            if ((isSlab(adjType) && isAir(adjacent?.above()?.typeId ?? '') && !isSlab(blockType) && !isAir(blockType)) ||
+                (isSlab(blockType) && isAir(adjType))) {
                 applyPhysics(entity, config, dir, SLAB_SPEED);
                 return true;
             }
@@ -78,7 +86,7 @@ system.runInterval(() => {
         };
         if (typeof dirId !== 'number')
             continue;
-        if (!directionMap[dirId]?.block?.typeId.includes(':air'))
+        if (!isAir(directionMap[dirId]?.block?.typeId))
             continue;
         applyPhysics(entity, config, directionMap[dirId].dir, STAIRS_SPEED);
     }
