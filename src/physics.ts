@@ -1,4 +1,4 @@
-import { world, system, Entity } from '@minecraft/server';
+import { world, system, Entity, Block } from '@minecraft/server';
 import { CarConfig, getRegisteredCars } from './registry';
 
 const SLAB_SPEED = 0.1;
@@ -55,8 +55,14 @@ function applyPhysics(entity: Entity, config: CarConfig, dir: string, speedScale
 
 system.runInterval(() => {
   for (const [entity, config] of getRegisteredCars(world.getDimension('overworld'))) {
-    const loc = entity.location; loc.y--
-    const block = entity.dimension.getBlock(loc);
+    const loc = entity.location;
+    let block: Block | undefined;
+
+    while (loc.y > 0) {
+      const b = entity.dimension.getBlock(loc); loc.y--;
+      if (!b || b.typeId == 'minecraft:air') continue;
+      block = b; break;
+    }
     if (!block) continue;
 
     const blockType = block.typeId;

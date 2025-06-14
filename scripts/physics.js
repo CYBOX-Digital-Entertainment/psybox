@@ -45,8 +45,15 @@ function applyPhysics(entity, config, dir, speedScale) {
 system.runInterval(() => {
     for (const [entity, config] of getRegisteredCars(world.getDimension('overworld'))) {
         const loc = entity.location;
-        loc.y--;
-        const block = entity.dimension.getBlock(loc);
+        let block;
+        while (loc.y > 0) {
+            const b = entity.dimension.getBlock(loc);
+            loc.y--;
+            if (!b || b.typeId == 'minecraft:air')
+                continue;
+            block = b;
+            break;
+        }
         if (!block)
             continue;
         const blockType = block.typeId;
