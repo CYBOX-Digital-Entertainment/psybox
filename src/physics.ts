@@ -6,8 +6,9 @@ const STAIRS_SPEED = 0.07;
 
 const directions = ['east', 'north', 'south', 'west'] as const;
 
-const isSlab = (t: string) => t.includes('slab');
+const isSlab = (t: string) => t.includes('slab') && !t.includes('double');
 const isAir = (t: string) => t.includes(':air');
+const isTop = (b: any) => b?.permutation.getAllStates()['top_slot_bit'];
 
 function applyPhysics(entity: Entity, config: CarConfig, dir: string, speedScale: number) {
   const yawDegrees = entity.getRotation().y;
@@ -75,11 +76,13 @@ system.runInterval(() => {
     const slabApplied = directions.some(dir => {
       const adjacent = block[dir]?.();
       const adjType = adjacent?.typeId ?? '';
+      const adjTypeAbove = adjacent?.above()?.typeId ?? '';
 
       if (
-        (isSlab(adjType) && isAir(adjacent?.above()?.typeId ?? '') && !isSlab(blockType) && !isAir(blockType)) ||
-        (isSlab(blockType) && isAir(adjType))
-      ) { 
+        (isSlab(adjType) && isAir(adjTypeAbove) && !isSlab(blockType) && !isAir(blockType)) ||
+        (isSlab(blockType) && isAir(adjType) && isAir(adjTypeAbove)) ||
+        (isSlab(blockType) && isSlab(adjType) && isTop(block) && !isTop(adjacent))
+      ) {
         applyPhysics(entity, config, dir, SLAB_SPEED); return true;
       }
 
