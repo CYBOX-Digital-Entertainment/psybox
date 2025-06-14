@@ -1,15 +1,8 @@
 {
-  "name": "psybox-physics-engine",
-  "version": "2.1.4-beta",
-  "scripts": {
-    "build": "tsc"
-  },
   "dependencies": {
-    "@minecraft/server": "2.0.0-beta.1.21.82-stable",
-    "@minecraft/server-gametest": "1.0.0-beta.1.21.70-stable",
-    "@minecraft/vanilla-data": "^1.21.81"
+    "@minecraft/server": "^2.0.0-beta.1.21.82-stable"
   },
   "devDependencies": {
-    "typescript": "^5.3.3"
+    "typescript": "^5.8.3"
   }
 }
