@@ -1,5 +1,5 @@
 import { world, system, Entity, Block } from '@minecraft/server';
-import { CarConfig, getRegisteredCars } from './registry';
+import { getRegisteredCars, CarConfig } from './registry';
 
 const SLAB_SPEED = 0.05;
 const STAIRS_SPEED = 0.07;
@@ -24,21 +24,17 @@ function applyPhysics(entity: Entity, config: CarConfig, dir: string, speedScale
 
   switch (dir) {
     case 'south':
-      isBackward = yawDegrees >= 90 || yawDegrees <= -90;
       deviation = Math.min(Math.abs(yawDegrees - 90), Math.abs(yawDegrees + 90));
-      break;
+      isBackward = yawDegrees >= 90 || yawDegrees <= -90; break;
     case 'north':
-      isBackward = yawDegrees >= -90 && yawDegrees <= 90;
       deviation = Math.min(Math.abs(yawDegrees - 90), Math.abs(yawDegrees + 90));
-      break;
+      isBackward = yawDegrees >= -90 && yawDegrees <= 90; break;
     case 'west':
-      isBackward = yawDegrees >= -180 && yawDegrees <= 0;
       deviation = Math.min(Math.abs(normYaw - 180), Math.abs(normYaw));
-      break;
+      isBackward = yawDegrees >= -180 && yawDegrees <= 0; break;
     case 'east':
-      isBackward = yawDegrees > 0;
       deviation = Math.min(Math.abs(normYaw - 180), Math.abs(normYaw));
-      break;
+      isBackward = yawDegrees > 0; break;
     default: return;
   }
 
@@ -54,10 +50,17 @@ function applyPhysics(entity: Entity, config: CarConfig, dir: string, speedScale
     z: directionZ * fadeFactor * speedScale,
   };
 
+  let { x: vx, z: vz } = entity.getVelocity();
+  const isRot = impulse.x * vx + impulse.z * vz >= 0;
+  entity.triggerEvent(`phy_${isBackward ? 'back' : 'front'}${isRot ? '' : '_rotation'}`);
+
+  if (dir === 'west') vx *= -1;
+  if (dir === 'north') vz *= -1;
+
+  if ((dir == 'west' || dir == 'east') && !isBackward && vx < 0.03 && !(vx >= -0.01 && vx < 0)) return;
+  if ((dir == 'north' || dir == 'south') && !isBackward && vz < 0.03 && !(vz >= -0.01 && vz < 0)) return;
+
   entity.applyImpulse(impulse);
-  if (deviation < 20) return;
-  if (isBackward) entity.triggerEvent('phy_back');
-  else entity.triggerEvent('phy_front');
 }
 
 system.runInterval(() => {
