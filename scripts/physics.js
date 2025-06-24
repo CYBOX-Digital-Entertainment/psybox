@@ -1,103 +1,74 @@
-import { world, system } from '@minecraft/server';
-import { getRegisteredCars } from './registry';
-const SLAB_SPEED = 0.05;
-const STAIRS_SPEED = 0.07;
-const directions = ['east', 'north', 'south', 'west'];
-const isSlab = (t) => t.includes('slab') && !t.includes('double');
-const isAir = (t) => t.includes(':air');
-const isTop = (b) => b?.permutation.getAllStates()['top_slot_bit'];
-function applyPhysics(entity, config, dir, speedScale) {
-    const yawDegrees = entity.getRotation().y;
-    const yawRadians = (yawDegrees * Math.PI) / 180;
-    let directionX = Math.sin(yawRadians);
-    let directionZ = Math.cos(yawRadians);
-    let isBackward;
-    let deviation;
-    const normYaw = ((yawDegrees % 360) + 360) % 360;
-    switch (dir) {
-        case 'south':
-            deviation = Math.min(Math.abs(yawDegrees - 90), Math.abs(yawDegrees + 90));
-            isBackward = yawDegrees >= 90 || yawDegrees <= -90;
-            break;
-        case 'north':
-            deviation = Math.min(Math.abs(yawDegrees - 90), Math.abs(yawDegrees + 90));
-            isBackward = yawDegrees >= -90 && yawDegrees <= 90;
-            break;
-        case 'west':
-            deviation = Math.min(Math.abs(normYaw - 180), Math.abs(normYaw));
-            isBackward = yawDegrees >= -180 && yawDegrees <= 0;
-            break;
-        case 'east':
-            deviation = Math.min(Math.abs(normYaw - 180), Math.abs(normYaw));
-            isBackward = yawDegrees > 0;
-            break;
-        default: return;
-    }
-    if (isBackward) {
-        directionX = -directionX;
-        directionZ = -directionZ;
-    }
-    const fadeFactor = deviation > 20 ? 2 : Math.cos((deviation / 20) * (Math.PI / 2));
-    const impulse = {
-        x: -directionX * fadeFactor * speedScale,
-        y: config.weight * -1,
-        z: directionZ * fadeFactor * speedScale,
-    };
-    let { x: vx, z: vz } = entity.getVelocity();
-    const isRot = impulse.x * vx + impulse.z * vz >= 0;
-    entity.triggerEvent(`phy_${isBackward ? 'back' : 'front'}${isRot ? '' : '_rotation'}`);
-    if (dir === 'west')
-        vx *= -1;
-    if (dir === 'north')
-        vz *= -1;
-    if ((dir == 'west' || dir == 'east') && !isBackward && vx < 0.03 && !(vx >= -0.01 && vx < 0))
-        return;
-    if ((dir == 'north' || dir == 'south') && !isBackward && vz < 0.03 && !(vz >= -0.01 && vz < 0))
-        return;
-    entity.applyImpulse(impulse);
+import { world, system, Vector3 } from '@minecraft/server';
+import { CAR_REGISTRY } from './registry';
+
+const CHECK_INTERVAL = 1;
+const RAYCAST_DISTANCE = 3.0;
+const SLIDE_IMPULSE_STRENGTH = 0.05;
+const SLIDE_CHECK_THRESHOLD = 0.1;
+const MOVEMENT_THRESHOLD = 0.05;
+
+function getBlockRelative(entity, dx, dy, dz) {
+    const { x, y, z } = entity.location;
+    return entity.dimension.getBlock({ x: Math.floor(x) + dx, y: Math.floor(y) + dy, z: Math.floor(z) + dz });
 }
-system.runInterval(() => {
-    for (const [entity, config] of getRegisteredCars(world.getDimension('overworld'))) {
-        const loc = entity.location;
-        let block;
-        while (loc.y > 0) {
-            const b = entity.dimension.getBlock(loc);
-            loc.y--;
-            if (!b || isAir(b.typeId))
-                continue;
-            block = b;
-            break;
-        }
-        if (!block)
-            continue;
-        const blockType = block.typeId;
-        const slabApplied = directions.some(dir => {
-            const adjacent = block[dir]?.();
-            const adjType = adjacent?.typeId ?? '';
-            const adjTypeAbove = adjacent?.above()?.typeId ?? '';
-            if ((isSlab(adjType) && isAir(adjTypeAbove) && !isSlab(blockType) && !isAir(blockType)) ||
-                (isSlab(blockType) && isAir(adjType) && isAir(adjTypeAbove)) ||
-                (isSlab(blockType) && isSlab(adjType) && isTop(block) && !isTop(adjacent))) {
-                applyPhysics(entity, config, dir, SLAB_SPEED);
-                return true;
+
+function getSlopeAngle(block) {
+    if (!block) return 0;
+    const typeId = block.typeId;
+    if (typeId.includes('stairs')) {
+        const permutation = block.permutation;
+        const facing = permutation.getProperty('minecraft:cardinal_direction')?.value;
+        const half = permutation.getProperty('minecraft:block_half')?.value;
+        if (half === 'bottom') {
+            if (facing === 'north' || facing === 'south') {
+                return 22.5;
+            } else {
+                return 22.5;
             }
-            return false;
-        });
-        if (!slabApplied && !blockType.includes('stairs'))
-            entity.triggerEvent('phy_normal');
-        if (slabApplied || !blockType.includes('stairs'))
-            continue;
-        const dirId = block.permutation.getAllStates()['weirdo_direction'];
-        const directionMap = {
-            0: { dir: 'west', block: block.west(1) },
-            1: { dir: 'east', block: block.east(1) },
-            2: { dir: 'north', block: block.north(1) },
-            3: { dir: 'south', block: block.south(1) },
-        };
-        if (typeof dirId !== 'number')
-            continue;
-        if (!isAir(directionMap[dirId]?.block?.typeId))
-            continue;
-        applyPhysics(entity, config, directionMap[dirId].dir, STAIRS_SPEED);
+        }
+    } else if (typeId.includes('slab') && block.permutation.getProperty('minecraft:vertical_half')?.value === 'bottom') {
+        return 11.25;
     }
-}, 2);
+    return 0;
+}
+
+system.runInterval(() => {
+    for (const carConfig of CAR_REGISTRY) {
+        const cars = world.getDimension('overworld').getEntities({ type: carConfig.entityId });
+        for (const car of cars) {
+            const currentVelocity = car.getVelocity();
+            const horizontalSpeed = Math.sqrt(currentVelocity.x * currentVelocity.x + currentVelocity.z * currentVelocity.z);
+            const blockBelow = car.dimension.getBlock(car.location);
+            const blockInFront = getBlockRelative(car, Math.sin(car.rotation.y * Math.PI / 180), 0, Math.cos(car.rotation.y * Math.PI / 180));
+            const blockBehind = getBlockRelative(car, -Math.sin(car.rotation.y * Math.PI / 180), 0, -Math.cos(car.rotation.y * Math.PI / 180));
+
+            let currentTiltState = 0;
+            const rayHitFront = car.dimension.blockRaycast(car.location, { x: Math.sin(car.rotation.y * Math.PI / 180), y: -0.5, z: Math.cos(car.rotation.y * Math.PI / 180) }, { maxDistance: RAYCAST_DISTANCE });
+            const rayHitBack = car.dimension.blockRaycast(car.location, { x: -Math.sin(car.rotation.y * Math.PI / 180), y: -0.5, z: -Math.cos(car.rotation.y * Math.PI / 180) }, { maxDistance: RAYCAST_DISTANCE });
+
+            if (rayHitFront && rayHitFront.block && rayHitFront.block.location.y < car.location.y - 0.5) {
+                currentTiltState = 2; // 앞 내리막
+            } else if (rayHitBack && rayHitBack.block && rayHitBack.block.location.y < car.location.y - 0.5) {
+                currentTiltState = 4; // 뒤 내리막
+            } else if (rayHitFront && rayHitFront.block && rayHitFront.block.location.y > car.location.y + 0.5) {
+                currentTiltState = 1; // 앞 오르막
+            } else if (rayHitBack && rayHitBack.block && rayHitBack.block.location.y > car.location.y + 0.5) {
+                currentTiltState = 3; // 뒤 오르막
+            }
+
+            car.setProperty('cybox:car_tilt_state', currentTiltState);
+            car.setProperty('cybox:is_moving', horizontalSpeed > MOVEMENT_THRESHOLD);
+
+            if (horizontalSpeed < SLIDE_CHECK_THRESHOLD && currentTiltState !== 0) {
+                let slideDirection = { x: 0, y: 0, z: 0 };
+                if (currentTiltState === 1 || currentTiltState === 3) {
+                    slideDirection = { x: -currentVelocity.x, y: 0, z: -currentVelocity.z };
+                } else if (currentTiltState === 2 || currentTiltState === 4) {
+                    slideDirection = { x: currentVelocity.x, y: 0, z: currentVelocity.z };
+                }
+                const slideImpulse = new Vector3(slideDirection.x * SLIDE_IMPULSE_STRENGTH, 0, slideDirection.z * SLIDE_IMPULSE_STRENGTH);
+                car.applyImpulse(slideImpulse);
+            }
+        }
+    }
+}, CHECK_INTERVAL);

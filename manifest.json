@@ -1,37 +1,37 @@
 {
-  "format_version": 2,
-  "header": {
-    "name": "물리엔진",
-    "description": "",
-    "uuid": "bb2e21f8-dc49-495c-894b-eff5de8d279a",
-    "version": [
-      1,
-      0,
-      0
+    "format_version": 2,
+    "header": {
+        "name": "물리엔진",
+        "description": "차량 물리 엔진 및 애니메이션 제어",
+        "uuid": "bb2e21f8-dc49-495c-894b-eff5de8d279a",
+        "version": [
+            1,
+            0,
+            0
+        ],
+        "min_engine_version": [
+            1,
+            21,
+            90
+        ]
+    },
+    "modules": [
+        {
+            "type": "script",
+            "language": "javascript",
+            "uuid": "6229de85-7eea-49d2-9188-549a2ff0e7f7",
+            "entry": "scripts/main.js",
+            "version": [
+                1,
+                0,
+                0
+            ]
+        }
     ],
-    "min_engine_version": [
-      1,
-      21,
-      80
+    "dependencies": [
+        {
+            "module_name": "@minecraft/server",
+            "version": "2.0.0"
+        }
     ]
-  },
-  "modules": [
-    {
-      "type": "script",
-      "language": "javascript",
-      "uuid": "6229de85-7eea-49d2-9188-549a2ff0e7f7",
-      "version": [
-        1,
-        0,
-        0
-      ],
-      "entry": "main.js"
-    }
-  ],
-  "dependencies": [
-    {
-      "module_name": "@minecraft/server",
-      "version": "1.19.0"
-    }
-  ]
 }
