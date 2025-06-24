@@ -92,6 +92,7 @@ system.runInterval(() => {
       return false;
     });
 
+    if (!slabApplied && !blockType.includes('stairs')) entity.triggerEvent('phy_normal');
     if (slabApplied || !blockType.includes('stairs')) continue;
 
     const dirId = block.permutation.getAllStates()['weirdo_direction'];
